@@ -1,6 +1,9 @@
 import configparser
+import random
 from escpos import printer
+import time
 from datetime import datetime, timezone
+import uuid
 
 
 def read_config():
@@ -55,9 +58,9 @@ def read_config():
         exit(1)
 
 
-def pdf417(content, width=2, rows=0, height_multiplier=0, data_column_count=0, ec=20, options=0):
+def print_pdf417(content, width=2, rows=0, height_multiplier=0, data_column_count=0, ec=20, options=0):
     # Generate a PDF417 barcode command sequence for the printer
-
+    # TODO Add error calling when generation fails
     def prefix():
         # Create a byte array for the prefix command sequence (includes pl and ph for one byte settings)
         trunk = bytearray(b'\x1d\x28\x6b\x03\x00\x30')
@@ -171,10 +174,12 @@ def pdf417(content, width=2, rows=0, height_multiplier=0, data_column_count=0, e
 
 def print_header():
     # Print the header including the logo and current date/time
+    p.hw('INIT')  # Initializes the printer
     p.image('./assets/logo.png', center=True)  # Print the logo
+    p.hw('INIT') # Initializes the printer after printing image
     p.ln(3)  # Add line breaks
     now = datetime.now(timezone.utc).strftime('%m/%d/%Y %H:%M:%S %Z')  # Current time in UTC
-    p.text('Printed at: %s\n' % now)  # Print the timestamp
+    p.text('Printed at: %s' % now)  # Print the timestamp
 
 
 def print_line():
@@ -202,6 +207,37 @@ def r_l_justify(str_a, str_b, space_chr=' '):
     p.text(final) # Prints the justified line
 
 
+def main_menu():
+    print('1. Add items to inventory')
+    print('2. Remove items from inventory')
+    print('3. Create shopping list')
+    print('4. Set up default shopping lists')
+    print('5. Historical shopping lists')
+    print('6. Reports')
+    print('7. Print test page')
+    print('0. Exit')
+    choice = input('Enter your choice: ')
+    return choice
+
+
+def print_list(items):
+    # Prints a shopping list with the given data
+    list_uuid = uuid.uuid4()  # Generates a UUID for the list
+    creation_time = int(time.time())
+    print_line() # Prints horizontal line
+    p.ln(1) #new line after horizontal line
+    # Print items justified r to l
+    name_qty = [(items[i], items[i + 1]) for i in range(0, len(items) - 1, 2)] # Pair items with qty
+    for x in name_qty:
+        # TODO add check to verify name length and cut if too long
+        r_l_justify(str(x[0]),str(x[1])) # Prints name and qty r-l justified
+    p.ln(1)  # new line after items
+    print_pdf417(str(list_uuid), width=3) # Prints list UUID as pdf417 barcode
+    # Prepare output data
+    output = {'time_generated': creation_time, 'uuid': list_uuid, 'items': items}
+    return output
+
+
 def chr_test():
     # Test the character width of the printer
     p.hw('INIT')  # Initialize hardware
@@ -212,16 +248,60 @@ def chr_test():
     p.text('Current setting is: %s\nThat looks like this...\n' % printer_config['chr_width'])  # Print current setting
     print_line()  # Print a line
 
+
 def pdf417_test():
     # Test the character width of the printer
     p.hw('INIT')  # Initialize hardware
     p.set(align='center', custom_size=True, height=4, width=4, invert=True)  # Set text properties for header
     p.text('PDF417 TEST\n')  # Print 'PDF417 TEST'
+    p.hw('INIT')  # Initialize hardware
     content = '''
     !"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~
     ''' # noqa Content of the barcode
-    sequence = pdf417(content) # Generates PDF471 sequence
+    sequence = print_pdf417(content) # Generates PDF471 sequence
     p._raw(sequence) # noqa Sends the sequence to the printer
+
+
+def list_test():
+    p.hw('INIT')  # Initializes the printer
+    p.set(align='center', custom_size=True, height=4, width=4, invert=True)  # Set text properties for header
+    p.text('LIST TEST\n')
+    p.hw('INIT')  # Initialize hardware
+    # TODO add "real" data from TestProduct
+    data_out = print_list(['Apple', 1, 'Milk', 14, 'Banana', 69, 'Soda', 4])
+    p.hw('INIT')  # Initialize hardware
+    p.ln(1)
+    p.text('DEBUG:\n')
+    p.text(data_out)
+
+
+def print_debug():
+    p.hw('INIT')
+    print_header()
+    p.ln(2)
+    chr_test()
+    p.ln(2)
+    pdf417_test()
+    p.ln(2)
+    list_test()
+    p.cut()
+
+
+class TestProduct:
+    # Creates a test product
+    def __init__(self, name: str, date_first_added: int, qty: int=1, notes: str = ''):
+        self.name = name
+        self.qty = qty
+        self.date_first_added = date_first_added
+        self.notes = notes
+        # Assigns a random primary key to simulate being received from a db
+        self.pk: int = int(random.uniform(0, 100000))
+        self.uuid = uuid.uuid4() # Assigns a random UUID to the product
+
+    def random_qty(self):
+        # Gives the item a random quantity
+        self.qty = int((random.uniform(0, 15)))
+
 
 # Load printer configuration
 printer_config = read_config()
@@ -235,16 +315,4 @@ p = printer.Usb(
     profile=str(printer_config['profile'])
 )
 
-p.hw("INIT")
-print_header()
-p.ln(1)
-chr_test()
-p.ln(2)
-p.hw('INIT')
-pdf417_test()
-p.ln(1)
-p.hw('INIT')
-p.set(align='center', custom_size=True, height=4, width=4, invert=True)  # Set text properties for header
-p.text('R-L JUSTIFY\n\n')
-r_l_justify('this is', 'a test')
-p.cut()
+print_debug()
