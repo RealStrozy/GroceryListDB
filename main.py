@@ -177,7 +177,7 @@ def print_header():
     p.hw('INIT')  # Initializes the printer
     p.image('./assets/logo.png', center=True)  # Print the logo
     p.hw('INIT') # Initializes the printer after printing image
-    p.ln(3)  # Add line breaks
+    p.ln(2)  # Add line breaks
     now = datetime.now(timezone.utc).strftime('%m/%d/%Y %H:%M:%S %Z')  # Current time in UTC
     p.text('Printed at: %s\n' % now)  # Print the timestamp
 
@@ -220,9 +220,10 @@ def main_menu():
     return choice
 
 
-def print_list(items):
+def print_list(items, list_uuid = None, barcode = True):
     # Prints a shopping list with the given data
-    list_uuid = uuid.uuid4()  # Generates a UUID for the list
+    if not list_uuid: # Checks to see if a UUID was supplied and if not generates one
+        list_uuid = uuid.uuid4()  # Generates a UUID for the list
     creation_time = int(time.time())
     # Print items justified r to l
     name_qty = [(items[i], items[i + 1]) for i in range(0, len(items) - 1, 2)] # Pair items with qty
@@ -230,7 +231,8 @@ def print_list(items):
         # TODO add check to verify name length and cut if too long
         r_l_justify(str(x[0]),str(x[1])) # Prints name and qty r-l justified
     p.ln(1)  # new line after items
-    print_pdf417(str(list_uuid), width=3) # Prints list UUID as pdf417 barcode
+    if barcode:
+        print_pdf417(str(list_uuid), width=3) # Prints list UUID as pdf417 barcode
     # Prepare output data
     output = {'time_generated': creation_time, 'uuid': list_uuid, 'items': items}
     return output
