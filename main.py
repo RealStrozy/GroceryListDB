@@ -183,6 +183,25 @@ def print_line():
     p.text(line)  # Print the line
 
 
+def r_l_justify(str_a, str_b, space_chr=' '):
+    # Prints two strings where one is justified to the left and one to the right
+    # Validating the space_chr
+    if space_chr == "":
+        p.text('SPACE_CHR CANNOT BE EMPTY')
+        return 'SPACE_CHR CANNOT BE EMPTY'
+    if len(space_chr) != 1:
+        p.text('SPACE_CHR CANNOT BE LONGER THAN 1')
+        return 'SPACE_CHR CANNOT BE LONGER THAN 1'
+    both_length = len(str_a) + len(str_b) # Gets the total len of both str
+    if both_length > int(printer_config['chr_width']): # Makes sure that both str fit
+        return 'TOO LONG FOR R-L JUSTIFY'
+    added_chr = int(printer_config['chr_width']) - both_length
+    spaces = space_chr * added_chr # Generates the needed spaces
+    final = str_a + spaces + str_b # Combines everything
+    p.hw('INIT') # Initializes the printer, because it won't work reliably with effects
+    p.text(final) # Prints the justified line
+
+
 def chr_test():
     # Test the character width of the printer
     p.hw('INIT')  # Initialize hardware
@@ -223,4 +242,9 @@ chr_test()
 p.ln(2)
 p.hw('INIT')
 pdf417_test()
+p.ln(1)
+p.hw('INIT')
+p.set(align='center', custom_size=True, height=4, width=4, invert=True)  # Set text properties for header
+p.text('R-L JUSTIFY\n\n')
+r_l_justify('this is', 'a test')
 p.cut()
