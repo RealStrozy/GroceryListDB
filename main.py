@@ -179,7 +179,7 @@ def print_header():
     p.hw('INIT') # Initializes the printer after printing image
     p.ln(3)  # Add line breaks
     now = datetime.now(timezone.utc).strftime('%m/%d/%Y %H:%M:%S %Z')  # Current time in UTC
-    p.text('Printed at: %s' % now)  # Print the timestamp
+    p.text('Printed at: %s\n' % now)  # Print the timestamp
 
 
 def print_line():
@@ -224,8 +224,6 @@ def print_list(items):
     # Prints a shopping list with the given data
     list_uuid = uuid.uuid4()  # Generates a UUID for the list
     creation_time = int(time.time())
-    print_line() # Prints horizontal line
-    p.ln(1) #new line after horizontal line
     # Print items justified r to l
     name_qty = [(items[i], items[i + 1]) for i in range(0, len(items) - 1, 2)] # Pair items with qty
     for x in name_qty:
@@ -266,7 +264,7 @@ def list_test():
     p.hw('INIT')  # Initializes the printer
     p.set(align='center', custom_size=True, height=4, width=4, invert=True)  # Set text properties for header
     p.text('LIST TEST\n')
-    p.hw('INIT')  # Initialize hardware
+    p.hw('INIT')  # Initializes printer after header
     # TODO add "real" data from TestProduct
     data_out = print_list(['Apple', 1, 'Milk', 14, 'Banana', 69, 'Soda', 4])
     p.hw('INIT')  # Initialize hardware
