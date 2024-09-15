@@ -305,6 +305,7 @@ def print_debug(*args):
     p.cut()  # Cut the page
     return tests_ran
 
+
 class TestProduct:
     # Creates a test product
     def __init__(self, name: str, date_first_added: int, qty: int=1, notes: str = ''):
