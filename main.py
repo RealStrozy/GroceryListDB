@@ -179,7 +179,7 @@ def print_header():
     p.hw('INIT') # Initializes the printer after printing image
     p.ln(2)  # Add line breaks
     now = datetime.now(timezone.utc).strftime('%m/%d/%Y %H:%M:%S %Z')  # Current time in UTC
-    p.text('Printed at: %s\n' % now)  # Print the timestamp
+    p.text('Printed at: %s' % now)  # Print the timestamp
 
 
 def print_line():
@@ -275,17 +275,35 @@ def list_test():
     p.text(data_out)
 
 
-def print_debug():
-    p.hw('INIT')
-    print_header()
-    p.ln(2)
-    chr_test()
-    p.ln(2)
-    pdf417_test()
-    p.ln(2)
-    list_test()
-    p.cut()
+def print_debug(*args):
+    # Master list of tests to run
+    tests_list = {
+        'header': print_header,
+        'chr': chr_test,
+        'pdf417': pdf417_test,
+        'list': list_test
+    }
 
+    # Allow fetching the tests_list from outside the function
+    if 'get_list' in args:
+        return tests_list
+
+    # Determine which functions to run
+    if not args:
+        # If args is empty, run all functions
+        tests_to_run = tests_list.items()
+    else:
+        # If args is not empty, filter functions based on args
+        tests_to_run = [(test_name, func) for test_name, func in tests_list.items() if test_name in args]
+
+    tests_ran = '' # Initialize logging of tests ran
+
+    for test_name, func in tests_to_run:
+        func()  # Execute the function
+        p.ln(2) # New line after test
+        tests_ran += str(func)
+    p.cut()  # Cut the page
+    return tests_ran
 
 class TestProduct:
     # Creates a test product
