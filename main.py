@@ -188,7 +188,7 @@ def mod_qty_db(database: str, db_table: str, db_id: int, mod=1, add=True):
     db = sqlite3.connect(f'./.data/{database}.db')  # Defines DB to db
     cur = db.cursor()  # Defines cursor
 
-    if add: # For addition
+    if add: # To do an addition
         # Construct the SQL UPDATE statement
         query = f'UPDATE {db_table} SET qty = qty + ? WHERE ID = ?'
 
@@ -205,7 +205,7 @@ def mod_qty_db(database: str, db_table: str, db_id: int, mod=1, add=True):
 
     else: # For subtraction
         # Construct the SQL UPDATE statement
-        query = f'UPDATE {db_table} SET qty = qty + ? WHERE ID = ?'
+        query = f'UPDATE {db_table} SET qty = qty - ? WHERE ID = ?'
 
         # Execute the query
         cur.execute(query, (mod, db_id))
@@ -271,12 +271,12 @@ def user_items_to_inventory():
             # Let user know data rates
             print(f'You have {remaining} search(s) until {until}')
 
-            if fetch[0] :
+            if fetch[0]: # noqa
                 # If product lookup was true, use that
                 product_info = fetch[0][0]
-                new_item = {'name': product_info['title'], 'upc': upc,
-                            'qty': 1, 'description': product_info['description'], 'time_first_added': cur_time}
-                print(product_info['title'])
+                new_item = {'name': product_info['title'], 'upc': upc, # noqa
+                            'qty': 1, 'description': product_info['description'], 'time_first_added': cur_time} # noqa
+                print(product_info['title']) # noqa
 
             else: # If no info was found, prompt user
                 # Structure user input
@@ -286,6 +286,34 @@ def user_items_to_inventory():
             add_remove_db('current', 'inventory',
                           add=True, name= new_item['name'], upc=new_item['upc'], qty=new_item['qty'],
                           description=new_item['description'], time_first_added=new_item['time_first_added'])
+
+
+def user_items_from_inventory():
+    check_current_db()
+
+    # Allow user to add items
+    menu = True
+    while menu is True:
+        print('Remove item: ')
+
+        # Gives user an out
+        upc = input('Enter UPC (0 for exit): ')
+        if int(upc) == 0:
+            return
+
+        # Determines if item is in inventory by UPC
+        search = search_db('current', 'inventory', 'upc', upc)
+
+        if search: # Checks and makes sure item is in inventory
+            if not int(search[0][3]) <= 0:
+                mod_qty_db('current', 'inventory', search[0][0], add=False)  # Removes 1 qty
+
+            else:
+                print(f'{search[0][1]} has 0 in inventory already.')
+
+
+        else: # If not in inventory let user know
+            print('Item is not currently in inventory.')
 
 
 def print_pdf417(content, width=2, rows=0, height_multiplier=0, data_column_count=0, ec=20, options=0):
@@ -556,6 +584,7 @@ p = printer_connect(printer_config)
 
 check_current_db()
 user_items_to_inventory()
+user_items_from_inventory()
 
 # Parse for list
 data = search_db('current', 'inventory', None, None)
