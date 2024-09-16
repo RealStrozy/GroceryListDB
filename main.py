@@ -58,6 +58,19 @@ def read_config():
         exit(1)
 
 
+def printer_connect(config):
+    # takes config data and sets up definition for the escpos repo
+    # Initialize USB printer with the configuration settings
+    esc_pos = printer.Usb(
+        int(config['idVendor'], 16),
+        int(config['idProduct'], 16),
+        in_ep=int(config['in_ep'], 16),
+        out_ep=int(config['out_ep'], 16),
+        profile=str(config['profile'])
+    )
+    return esc_pos
+
+
 def print_pdf417(content, width=2, rows=0, height_multiplier=0, data_column_count=0, ec=20, options=0):
     # Generate a PDF417 barcode command sequence for the printer
     # TODO Add error calling when generation fails
@@ -322,16 +335,8 @@ class TestProduct:
         self.qty = int((random.uniform(0, 15)))
 
 
-# Load printer configuration
 printer_config = read_config()
 
-# Initialize USB printer with the configuration settings
-p = printer.Usb(
-    int(printer_config['idVendor'], 16),
-    int(printer_config['idProduct'], 16),
-    in_ep=int(printer_config['in_ep'], 16),
-    out_ep=int(printer_config['out_ep'], 16),
-    profile=str(printer_config['profile'])
-)
+p = printer_connect(printer_config)
 
 print_debug()
