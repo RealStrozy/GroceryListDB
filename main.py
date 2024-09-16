@@ -4,6 +4,7 @@ from escpos import printer
 import time
 from datetime import datetime, timezone
 import uuid
+import sqlite3
 
 
 def read_config():
@@ -69,6 +70,105 @@ def printer_connect(config):
         profile=str(config['profile'])
     )
     return esc_pos
+
+
+def check_current_db():
+    db = sqlite3.connect(f'./.data/current.db')  # Defines DB
+    cur = db.cursor()  # Defines cursor
+
+    # Make sure inventory db_table exists
+    cur.execute('''CREATE TABLE IF NOT EXISTS inventory (
+        ID INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE NOT NULL,
+        upc INTEGER,
+        qty INTEGER NOT NULL,
+        description TEXT,
+        time_first_added INTEGER,
+        category TEXT
+    )''')
+    db.commit()
+
+    # Make sure default_lists db_table exists
+    cur.execute('''CREATE TABLE IF NOT EXISTS default_lists (
+        ID INTEGER PRIMARY KEY AUTOINCREMENT,
+        UUID TEXT UNIQUE NOT NULL,
+        name TEXT UNIQUE NOT NULL
+    )''')
+    db.commit()
+
+    # Make sure default_lists_items db_table exists
+    cur.execute('''CREATE TABLE IF NOT EXISTS default_lists_items (
+        ID INTEGER PRIMARY KEY AUTOINCREMENT,
+        default_lists_id INTEGER,
+        name TEXT UNIQUE NOT NULL,
+        qty INTEGER,
+        FOREIGN KEY (default_lists_id) REFERENCES default_lists(ID)
+    )''')
+    db.commit()
+
+    # Closes up shop
+    cur.close()
+    db.close()
+
+
+def search_db(database: str, db_table: str, term, value):
+    db = sqlite3.connect(f'./.data/{database}.db')  # Defines DB to db
+    cur = db.cursor()  # Defines cursor
+
+    # Cursor searches for data
+    query = f'SELECT * FROM {db_table} WHERE {term} = ?'
+    cur.execute(query, (value,))
+
+    # Returns item
+    result = []
+    for row in cur:
+        result.append(row)
+
+    # Closes up shop
+    cur.close()
+    db.close()
+
+    return result
+
+
+def add_remove_db(database: str, db_table: str, add=True, **kwargs):
+    db = sqlite3.connect(f'./.data/{database}.db')  # Defines DB to db
+    cur = db.cursor()  # Defines cursor
+
+    if add:
+        # Check to see if the item exists
+        try:
+            # Construct the column names and placeholders for values
+            columns = ', '.join(kwargs.keys())
+            placeholders = ', '.join(['?'] * len(kwargs))
+
+            # Construct the SQL query
+            query = f'INSERT INTO {db_table} ({columns}) VALUES ({placeholders})'
+
+            # Execute the query
+            cur.execute(query, tuple(kwargs.values()))
+            db.commit()
+
+        except sqlite3.IntegrityError: # If it exists
+            print(kwargs['name'], 'already in database.')
+            return
+
+    else:
+        if kwargs['id']: # Only allow deletion if database ID is known
+
+            # Construct the SQL DELETE statement
+            query = f'DELETE FROM {db_table} WHERE ID = ?'
+
+            # Execute the query
+            cur.execute(query, kwargs['id'])
+            db.commit()
+
+        else:
+            print('Can only delete if database ID is known.')
+
+    # Closes up shop
+    cur.close()
+    db.close()
 
 
 def print_pdf417(content, width=2, rows=0, height_multiplier=0, data_column_count=0, ec=20, options=0):
@@ -336,7 +436,8 @@ class TestProduct:
 
 
 printer_config = read_config()
-
 p = printer_connect(printer_config)
 
-print_debug()
+check_current_db()
+add_remove_db('current', 'inventory', name='cheese', qty=50)
+print(search_db('current', 'inventory', 'name', 'cheese'))
