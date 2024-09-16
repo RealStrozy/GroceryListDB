@@ -5,6 +5,8 @@ import time
 from datetime import datetime, timezone
 import uuid
 import sqlite3
+import requests
+import json
 
 
 def read_config():
@@ -80,7 +82,7 @@ def check_current_db():
     cur.execute('''CREATE TABLE IF NOT EXISTS inventory (
         ID INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT UNIQUE NOT NULL,
-        upc INTEGER,
+        upc  INTEGER UNIQUE NOT NULL,
         qty INTEGER NOT NULL,
         description TEXT,
         time_first_added INTEGER,
@@ -115,18 +117,29 @@ def search_db(database: str, db_table: str, term, value):
     db = sqlite3.connect(f'./.data/{database}.db')  # Defines DB to db
     cur = db.cursor()  # Defines cursor
 
-    # Cursor searches for data
-    query = f'SELECT * FROM {db_table} WHERE {term} = ?'
-    cur.execute(query, (value,))
+    if term and value:
+        # Cursor searches for data
+        query = f'SELECT * FROM {db_table} WHERE {term} = ?'
+        cur.execute(query, (value,))
 
-    # Returns item
-    result = []
-    for row in cur:
-        result.append(row)
+        # Returns item
+        result = []
+        for row in cur:
+            result.append(row)
 
-    # Closes up shop
-    cur.close()
-    db.close()
+        # Closes up shop
+        cur.close()
+        db.close()
+
+    else:
+        # Gets all items
+        query = f'SELECT * FROM {db_table}'
+        cur.execute(query,)
+
+        # Returns item
+        result = []
+        for row in cur:
+            result.append(row)
 
     return result
 
@@ -169,6 +182,110 @@ def add_remove_db(database: str, db_table: str, add=True, **kwargs):
     # Closes up shop
     cur.close()
     db.close()
+
+
+def mod_qty_db(database: str, db_table: str, db_id: int, mod=1, add=True):
+    db = sqlite3.connect(f'./.data/{database}.db')  # Defines DB to db
+    cur = db.cursor()  # Defines cursor
+
+    if add: # For addition
+        # Construct the SQL UPDATE statement
+        query = f'UPDATE {db_table} SET qty = qty + ? WHERE ID = ?'
+
+
+        # Execute the query
+        cur.execute(query, (mod, db_id))
+
+        # Commit the changes
+        db.commit()
+
+        # Close the connection
+        cur.close()
+        db.close()
+
+    else: # For subtraction
+        # Construct the SQL UPDATE statement
+        query = f'UPDATE {db_table} SET qty = qty + ? WHERE ID = ?'
+
+        # Execute the query
+        cur.execute(query, (mod, db_id))
+
+        # Commit the changes
+        db.commit()
+
+        # Close the connection
+        cur.close()
+        db.close()
+
+
+def fetch_info(upc):
+    # Fetch information from the UPC Item DB API
+    url = f'https://api.upcitemdb.com/prod/trial/lookup?upc={upc}'
+    response = requests.get(url)
+
+    try:
+        response.raise_for_status()
+        upc_data = json.loads(response.text)
+        rate_limit_remaining = response.headers['X-RateLimit-Remaining']
+        rate_limit_reset = response.headers['X-RateLimit-Reset']
+
+        if upc_data['items']: # If the item was found
+            return upc_data['items'], rate_limit_remaining, rate_limit_reset
+
+        else: # If the item was not found
+            return False, rate_limit_remaining, rate_limit_reset
+
+    except requests.exceptions.HTTPError:
+        rate_limit_remaining = response.headers['X-RateLimit-Remaining']
+        rate_limit_reset = response.headers['X-RateLimit-Reset']
+        return False, rate_limit_remaining, rate_limit_reset
+
+
+def user_items_to_inventory():
+    check_current_db()
+
+    # Allow user to add items
+    menu = True
+    while menu is True:
+        print('Add item: ')
+
+        # Gets current time
+        cur_time = int(time.time())
+
+        # Gives user an out
+        upc = input('Enter UPC (0 for exit): ')
+        if int(upc) == 0:
+            return
+
+        # Determines if item is in inventory by UPC
+        search = search_db('current', 'inventory', 'upc', upc)
+        if search:
+            mod_qty_db('current', 'inventory', search[0][0], 1)
+
+        else:
+            # Search for item UPC and parse
+            fetch = fetch_info(upc)
+            remaining = fetch[1]
+            until = time.strftime('%Y%m%dT%H%M%SZ', time.gmtime(int(fetch[2])))
+
+            # Let user know data rates
+            print(f'You have {remaining} search(s) until {until}')
+
+            if fetch[0] :
+                # If product lookup was true, use that
+                product_info = fetch[0][0]
+                new_item = {'name': product_info['title'], 'upc': upc,
+                            'qty': 1, 'description': product_info['description'], 'time_first_added': cur_time}
+                print(product_info['title'])
+
+            else: # If no info was found, prompt user
+                # Structure user input
+                new_item = {'name': input('Enter name: '), 'upc': upc,
+                            'qty': 1, 'description': input('Enter description:'), 'time_first_added': cur_time}
+
+            add_remove_db('current', 'inventory',
+                          add=True, name= new_item['name'], upc=new_item['upc'], qty=new_item['qty'],
+                          description=new_item['description'], time_first_added=new_item['time_first_added'])
 
 
 def print_pdf417(content, width=2, rows=0, height_multiplier=0, data_column_count=0, ec=20, options=0):
@@ -339,8 +456,7 @@ def print_list(items, list_uuid = None, barcode = True):
         list_uuid = uuid.uuid4()  # Generates a UUID for the list
     creation_time = int(time.time())
     # Print items justified r to l
-    name_qty = [(items[i], items[i + 1]) for i in range(0, len(items) - 1, 2)] # Pair items with qty
-    for x in name_qty:
+    for x in items:
         # TODO add check to verify name length and cut if too long
         r_l_justify(str(x[0]),str(x[1])) # Prints name and qty r-l justified
     p.ln(1)  # new line after items
@@ -439,5 +555,12 @@ printer_config = read_config()
 p = printer_connect(printer_config)
 
 check_current_db()
-add_remove_db('current', 'inventory', name='cheese', qty=50)
-print(search_db('current', 'inventory', 'name', 'cheese'))
+user_items_to_inventory()
+
+# Parse for list
+data = search_db('current', 'inventory', None, None)
+print(data)
+items = [(item[1], item[3]) for item in data]
+print(items)
+print(print_list(items))
+p.cut()
