@@ -386,7 +386,7 @@ def edit_default_shopping_list():
     list_id = shopping_lists[selection - 1][0]
 
     while True:
-        action = input("Enter 'add'(1) to add items, 'remove' to remove items, 'exit'(0) to finish: ").strip().lower()
+        action = input("Enter 'add'(1) to add or change items, 'remove' to remove items, 'exit'(0) to finish: ").strip().lower()
         if action == 'exit' or action == '0':
             break
         elif action not in ('add', 'remove', '1'):
@@ -400,23 +400,43 @@ def edit_default_shopping_list():
                     break
 
                 item_name, description, category, upc = item_info
-                try:
-                    qty = int(input("Enter quantity: "))
-                except ValueError:
-                    print("Invalid input.")
-                    continue
 
-                new_item = {
-                    'default_lists_id': list_id,
-                    'name': item_name,
-                    'upc': upc,
-                    'qty': qty,
-                    'description': description,
-                    'time_first_added': int(time.time()),
-                    'category': category
-                }
-                add_remove_db('current', 'default_lists_items', add=True, **new_item)
-                print(f"Item '{item_name}' added to shopping list.")
+                # Check if the item is already on the list
+                existing_items = search_db('current', 'default_lists_items', 'upc', upc)
+                existing_item = next((item for item in existing_items if item[1] == list_id), None)
+
+                if existing_item:
+                    print(f"Item '{item_name}' is already on the list.")
+                    try:
+                        mod_qty = int(input("Enter quantity to modify: "))
+                    except ValueError:
+                        print("Invalid input.")
+                        continue
+
+                    # Modify the quantity using the mod_qty_db function
+                    mod_qty_db('current', 'default_lists_items',
+                               existing_item[0], mod=(mod_qty - existing_item[4]))
+                    print(f"Item '{item_name}' quantity modified.")
+
+                else:
+                    try:
+                        qty = int(input("Enter quantity: "))
+                    except ValueError:
+                        print("Invalid input.")
+                        continue
+
+                    new_item = {
+                        'default_lists_id': list_id,
+                        'name': item_name,
+                        'upc': upc,
+                        'qty': qty,
+                        'description': description,
+                        'time_first_added': int(time.time()),
+                        'category': category
+                    }
+                    add_remove_db('current', 'default_lists_items', add=True, **new_item)
+                    print(f"Item '{item_name}' added to shopping list.")
+
             elif action == 'remove':
                 upc = input("Enter the UPC of the item to remove (0 to go back): ")
                 if upc == '0':
