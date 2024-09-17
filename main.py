@@ -983,9 +983,6 @@ def main_menu():
             print_historical_list()
         elif choice == '6':
             reports_menu()
-        elif choice == '7':
-            # Print test page (function call goes here)
-            pass
         else:
             print('Invalid choice. Please select a valid option.')
 
