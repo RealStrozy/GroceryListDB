@@ -2,4 +2,3 @@ configparser
 requests
 escpos
 uuid
-sqlite3

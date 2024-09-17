@@ -52,7 +52,8 @@ def read_config(config_file='config.ini'):
         }
         with open(config_file, 'w') as configfile:
             config.write(configfile)
-        print("Please use the config.ini file to configure your printer.")
+        print(BColors.WARNING + "Please use the config.ini file to configure your printer." + BColors.END_C)
+        time.sleep(10)
         exit(1)
 
     return config_values
