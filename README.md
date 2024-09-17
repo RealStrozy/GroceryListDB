@@ -55,7 +55,7 @@ Modify these values to match your printer's specifications.
 4. **Set up default shopping lists**: Manage default shopping lists (add, edit, delete).
 5. **Historical shopping lists**: View and reprint historical shopping lists using dates or UUIDs.
 6. **Reports**: Print reports for inventory and default lists.
-7. **Print test page**: Print a test page to verify printer setup.
+7. **Administrator**: Manage Administrator (edit, delete) items.
 8. **Exit**: Exit the application.
 
 ### Printer Setup
