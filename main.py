@@ -113,8 +113,12 @@ def check_current_db():
     cur.execute('''CREATE TABLE IF NOT EXISTS default_lists_items (
         ID INTEGER PRIMARY KEY AUTOINCREMENT,
         default_lists_id INTEGER,
-        name TEXT UNIQUE NOT NULL,
-        qty INTEGER,
+        name TEXT NOT NULL,
+        upc  INTEGER UNIQUE NOT NULL,
+        qty INTEGER NOT NULL,
+        description TEXT,
+        time_first_added INTEGER,
+        category TEXT,
         FOREIGN KEY (default_lists_id) REFERENCES default_lists(ID)
     )''')
     db.commit()
@@ -184,7 +188,8 @@ def add_remove_db(database: str, db_table: str, add=True, **kwargs):
             query = f'DELETE FROM {db_table} WHERE ID = ?'
 
             # Execute the query
-            cur.execute(query, kwargs['id'])
+            db_id = str(kwargs['id'])
+            cur.execute(query, db_id)
             db.commit()
 
         else:
@@ -250,6 +255,61 @@ def fetch_info(upc):
         rate_limit_remaining = response.headers['X-RateLimit-Remaining']
         rate_limit_reset = response.headers['X-RateLimit-Reset']
         return False, rate_limit_remaining, rate_limit_reset
+
+
+def get_item_info_by_upc():
+    """
+    Prompts the user for a UPC, checks inventory and fetches from an external API if needed.
+    Returns a tuple (item_name, description, category, upc) or None if the user decides to go back.
+    """
+    while True:
+        upc = input("Enter item UPC (0 to go back): ")
+        if upc == '0':
+            return None  # Signal to go back
+
+        # Check if the item exists in the inventory
+        inventory_item = search_db('current', 'inventory', 'upc', upc)
+        if inventory_item:
+            # Use the information from the inventory
+            item_name = inventory_item[0][1]
+            description = inventory_item[0][4]
+            category = inventory_item[0][6]
+            print(f"Item '{item_name}' found in inventory.")
+            return item_name, description, category, upc
+
+        # Fetch information from the external API if item not found in inventory
+        fetch = fetch_info(upc)
+        remaining = fetch[1]
+        until = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(int(fetch[2])))
+
+        # Display the remaining API searches
+        print(f"You have {remaining} search(es) remaining until {until}.")
+
+        if fetch[0] and isinstance(fetch[0], list) and len(fetch[0]) > 0:  # If product was found in the API
+            product_info = fetch[0][0]  # Assuming fetch[0] is a list of dictionaries
+
+            # Ensure product_info is a dictionary
+            if isinstance(product_info, dict):
+                item_name = product_info.get('title', 'Unknown')
+                description = product_info.get('description', 'No description available')
+                category = product_info.get('category', 'Uncategorized')
+                print(f"Item '{item_name}' found via API.")
+                return item_name, description, category, upc
+
+        # Prompt the user for a name if the item was not found in the API
+        while True:
+            item_name = input(BColors.WARNING + 'Enter product name (0 to go back): ' + BColors.END_C)
+            if item_name == '0':
+                break  # Go back to UPC entry
+            if item_name:
+                break
+        if item_name == '0':
+            continue  # Go back to the UPC input
+
+        description = input("Enter description: ")
+        category = input("Enter category: ")
+
+        return item_name, description, category, upc
 
 
 def user_items_to_inventory():
@@ -335,6 +395,131 @@ def user_items_from_inventory():
 
         else: # If not in inventory let user know
             print('Item is not currently in inventory.')
+
+
+def add_default_shopping_list(list_name):
+    check_current_db()
+
+    # Check if the default shopping list already exists
+    existing_list = search_db('current', 'default_lists', 'name', list_name)
+
+    if existing_list:
+        print(f"The shopping list '{list_name}' already exists.")
+        return
+
+    # Add new shopping list
+    new_list = {
+        'UUID': str(uuid.uuid4()),
+        'name': list_name
+    }
+
+    add_remove_db('current', 'default_lists', add=True, **new_list)
+    print(f"Shopping list '{list_name}' has been added.")
+
+
+def edit_default_shopping_list():
+    # Retrieve and display current default shopping lists
+    shopping_lists = search_db('current', 'default_lists', None, None)
+
+    if not shopping_lists:
+        print("No default shopping lists found.")
+        return
+
+    print("Default Shopping Lists:")
+    for idx, shopping_list in enumerate(shopping_lists, start=1):
+        print(f"{idx}. {shopping_list[2]}")  # Display list name
+
+    # Prompt user to select a list to edit
+    try:
+        selection = int(input("Select a shopping list to edit (0 to exit): "))
+    except ValueError:
+        print("Invalid input.")
+        return
+
+    if selection == 0:
+        return
+
+    selected_list = shopping_lists[selection - 1]
+    list_id = selected_list[0]
+
+    while True:
+        # Loop for selecting add or remove mode
+        action = input("Enter 'add' to add items, 'remove' to remove items, 'exit' to finish: ").lower()
+
+        if action == 'exit':
+            break
+        elif action not in ('add', 'remove'):
+            print("Invalid action.")
+            continue
+
+        # Sub-loop for continuously adding or removing items
+        while True:
+            if action == 'add':
+                # Use get_item_info_by_upc() to get item information
+                item_info = get_item_info_by_upc()
+                if not item_info:
+                    break  # Go back to the add/remove prompt
+
+                item_name, description, category, upc = item_info
+
+                # Get the quantity and the current time
+                qty = int(input("Enter quantity: "))
+                time_added = int(time.time())
+
+                # Add the item to the default shopping list
+                new_item = {
+                    'default_lists_id': list_id,
+                    'name': item_name,
+                    'upc': upc,
+                    'qty': qty,
+                    'description': description,
+                    'time_first_added': time_added,
+                    'category': category
+                }
+
+                add_remove_db('current', 'default_lists_items', add=True, **new_item)
+                print(f"Item '{item_name}' added to shopping list.")
+
+            elif action == 'remove':
+                upc = input("Enter the UPC of the item to remove (0 to go back): ")
+                if upc == '0':
+                    break  # Go back to the add/remove prompt
+
+                # Check if item exists in the default shopping list
+                items = search_db('current', 'default_lists_items', 'upc', upc)
+                if not items:
+                    print("Item not found in the list.")
+                    continue
+
+                # Remove the item by its ID
+                item_id = items[0][0]
+                add_remove_db('current', 'default_lists_items', add=False, id=item_id)
+                print("Item removed from the list.")
+
+
+def delete_default_shopping_list(list_name):
+    check_current_db()
+
+    # Check if the shopping list exists
+    shopping_list = search_db('current', 'default_lists', 'name', list_name)
+
+    if not shopping_list:
+        print(f"The shopping list '{list_name}' does not exist.")
+        return
+
+    # Remove the shopping list
+    list_id = shopping_list[0][0]
+    add_remove_db('current', 'default_lists', add=False, id=list_id)
+    print(f"Shopping list '{list_name}' has been deleted.")
+
+    # Clean up related items in default_lists_items
+    db = sqlite3.connect(f'./.data/current.db')
+    cur = db.cursor()
+    cur.execute('DELETE FROM default_lists_items WHERE default_lists_id = ?', (list_id,))
+    db.commit()
+    cur.close()
+    db.close()
+    print(f"Items associated with '{list_name}' have been deleted.")
 
 
 def print_pdf417(content, width=2, rows=0, height_multiplier=0, data_column_count=0, ec=20, options=0):
@@ -521,28 +706,176 @@ def inventory_report():
     p.cut() # Cut page
 
 
-def main_menu():
-    print(BColors.HEADER + 'GroceryListDB' + BColors.END_C)
-    print('1. Add items to inventory')
-    print('2. Remove items from inventory')
-    print('3. Create shopping list')
-    print('4. Set up default shopping lists')
-    print('5. Historical shopping lists')
-    print('6. Reports')
-    print('7. Print test page')
-    print('0. Exit')
-    choice = input('Enter your choice: ')
-    return choice
+def compare_default_list_to_inventory(default_list_id):
+    # Ensure the database tables exist
+    check_current_db()
+
+    # Fetch items from the default shopping list by ID
+    default_list_items = search_db('current', 'default_lists_items', 'default_lists_id', default_list_id)
+
+    if not default_list_items:
+        print(f"No items found on list searched.")
+        return []
+
+    # Create a dictionary of inventory items with name as keys for quick lookup
+    inventory_items = search_db('current', 'inventory', None, None)
+    inventory_dict = {item[1]: item for item in inventory_items}  # item[1] is the name
+
+    # List to store the tuples of items and their required quantities to add
+    items_to_add = []
+
+    # Compare each item in the default shopping list with the current inventory
+    for item in default_list_items:
+        default_name = item[2]  # Name in default list item
+        default_qty = item[4]  # Required quantity in default list
+
+        # Check if the item is in the inventory
+        if default_name in inventory_dict:
+            inventory_qty = inventory_dict[default_name][3]  # Quantity in inventory (item[3] is qty in inventory)
+
+            # Calculate the difference if inventory is less than required quantity
+            if inventory_qty < default_qty:
+                qty_needed = default_qty - inventory_qty
+                items_to_add.append((item[2], qty_needed))  # Append (item name, qty needed)
+        else:
+            # Item is not in inventory, need to add full default list quantity
+            items_to_add.append((item[2], default_qty))  # Append (item name, qty needed)
+
+    return items_to_add
+
+
+def create_shopping_list():
+    # Ensure the database tables exist
+    check_current_db()
+
+    # Fetch and display current default shopping lists
+    shopping_lists = search_db('current', 'default_lists', None, None)
+
+    if not shopping_lists:
+        print("No default shopping lists available.")
+        return []
+
+    print("Default Shopping Lists:")
+    for idx, shopping_list in enumerate(shopping_lists, start=1):
+        print(f"{idx}. {shopping_list[2]}")  # Display list name
+
+    # Prompt user to select a default shopping list
+    try:
+        selection = int(input("Select a default shopping list to create (0 to exit): "))
+    except ValueError:
+        print("Invalid input.")
+        return []
+
+    if selection == 0:
+        return []
+
+    selected_list_id = shopping_lists[selection - 1][0]
+
+    # Generate items needed based on the default shopping list and current inventory
+    items_needed = compare_default_list_to_inventory(selected_list_id)
+    print(f"Initial items needed to match default shopping list: {items_needed}")
+
+    # List to store manually added items
+    additional_items = []
+
+    # Sub-loop for adding additional items
+    while True:
+        action = input("Would you like to manually add more items? (yes/no): ").lower()
+
+        if action == 'no':
+            break
+        elif action != 'yes':
+            print("Invalid action. Please enter 'yes' or 'no'.")
+            continue
+
+        # Adding additional items using get_item_info_by_upc
+        while True:
+            item_info = get_item_info_by_upc()
+            if not item_info:
+                break  # Go back to the yes/no prompt
+
+            item_name, description, category, upc = item_info
+
+            # Get the quantity and add the item to the additional_items list
+            qty = int(input("Enter quantity: "))
+            additional_items.append((item_name, qty))
+
+    # Compare additional items to the current inventory
+    additional_items_to_add = []
+    for item_name, qty in additional_items:
+        # Check if the item is in the inventory
+        inventory_item = search_db('current', 'inventory', 'name', item_name)
+        if inventory_item:
+            inventory_qty = inventory_item[0][3]  # Quantity in inventory
+            # Calculate the difference if inventory is less than the needed quantity
+            if inventory_qty < qty:
+                qty_needed = qty - inventory_qty
+                additional_items_to_add.append((item_name, qty_needed))
+        else:
+            # Item is not in inventory, need to add full quantity
+            additional_items_to_add.append((item_name, qty))
+
+    # Combine the items needed from the default list and the additional items
+    combined_items_needed = items_needed + additional_items_to_add
+
+    print(f"Final list of items and quantities needed: {combined_items_needed}")
+    return combined_items_needed
 
 
 def reports_menu():
-    print(BColors.HEADER + 'Reports' + BColors.END_C)
-    print('1. Inventory')
-    print('2. Default lists')
-    print('0. Exit')
-    choice = input('Enter your choice: ')
+    while True:
+        print(BColors.HEADER + 'Reports' + BColors.END_C)
+        print('1. Inventory Report')
+        print('2. Default Lists Report')
+        print('0. Return to Main Menu')
 
-    return int(choice)
+        choice = input('Enter your choice: ')
+
+        if choice == '0':
+            break  # Exit the reports menu
+
+        elif choice == '1':
+            # Generate and print the inventory report
+            inventory_report()
+
+        elif choice == '2':
+            # Generate and print the default lists report
+            #default_lists_report()
+            pass
+
+        else:
+            print('Invalid choice. Please select a valid option.')
+
+
+def default_shopping_list_menu():
+    while True:
+        print(BColors.HEADER + 'Default Shopping List Management' + BColors.END_C)
+        print('1. Add a new default shopping list')
+        print('2. Edit an existing default shopping list')
+        print('3. Delete a default shopping list')
+        print('0. Return to main menu')
+
+        choice = input('Enter your choice: ')
+
+        if choice == '0':
+            break  # Exit the submenu
+
+        elif choice == '1':
+            # Add a new default shopping list
+            list_name = input('Enter the name of the new shopping list: ')
+            add_default_shopping_list(list_name)
+
+        elif choice == '2':
+            # Edit an existing default shopping list
+            edit_default_shopping_list()
+
+        elif choice == '3':
+            # Delete a default shopping list
+            list_name = input('Enter the name of the shopping list to delete: ')
+            delete_default_shopping_list(list_name)
+
+        else:
+            print('Invalid choice. Please select a valid option.')
 
 
 def chr_test():
@@ -574,7 +907,8 @@ def list_test():
     p.set(align='center', custom_size=True, height=4, width=4, invert=True)  # Set text properties for header
     p.text('LIST TEST\n')
     p.hw('INIT')  # Initializes printer after header
-    data_out = print_list(['Apple', 1, 'Milk', 14, 'Banana', 69, 'Soda', 4])
+    items = [('Apple', 1), ('Milk', 14), ('Banana', 69), ('Soda', 4)]
+    data_out = print_list(items)
     p.hw('INIT')  # Initialize hardware
     p.ln(1)
     p.text('DEBUG:\n')
@@ -612,35 +946,44 @@ def print_debug(*args):
     return tests_ran
 
 
-def main():
-
+def main_menu():
     while True:
-        # Display menu and run selections
-        selection = int(main_menu())
+        print(BColors.HEADER + 'GroceryListDB' + BColors.END_C)
+        print('1. Add items to inventory')
+        print('2. Remove items from inventory')
+        print('3. Create shopping list')
+        print('4. Set up default shopping lists')
+        print('5. Historical shopping lists')
+        print('6. Reports')
+        print('7. Print test page')
+        print('0. Exit')
+        choice = input('Enter your choice: ')
 
-        if selection == 0:
+        if choice == '0':
             quit(0)
 
-        if selection == 1:
+        elif choice == '1':
             user_items_to_inventory()
 
-        if selection == 2:
+        elif choice == '2':
             user_items_from_inventory()
 
-        if selection == 6:
-            while True:
-                sub_selection = reports_menu()
-                if sub_selection == 0:
-                    break
-                if sub_selection == 1:
-                    inventory_report()
+        elif choice == '4':
+            # Call the default shopping list submenu
+            default_shopping_list_menu()
 
-        if selection == 7:
+        elif choice == '6':
+            # Call the reports menu
+            reports_menu()
+
+        elif choice == '7':
             print_debug()
 
+        else:
+            print('Invalid choice. Please select a valid option.')
 
 # Set up escpos
 printer_config = read_config()
 p = printer_connect(printer_config)
 
-main()
+main_menu()
