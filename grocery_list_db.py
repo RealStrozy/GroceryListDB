@@ -277,11 +277,12 @@ def user_items_to_inventory():
             print(search[0][1])
         else:
             fetch, remaining, reset = fetch_info(upc)
-            print(fetch[0]['title'])
-            until = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(int(reset)))
-            print(f'You have {remaining} search(s) until {until}')
+            if remaining and reset:
+                until = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(int(reset)))
+                print(f'You have {remaining} search(s) until {until}')
 
             if fetch:
+                print(fetch[0]['title'])
                 product_info = fetch[0]
                 new_item = {
                     'name': product_info['title'],
