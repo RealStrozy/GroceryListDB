@@ -458,49 +458,79 @@ def delete_default_shopping_list(list_name):
 
 def remove_item_permanently():
     """
-    Lists all items in the inventory and allows the user to permanently remove one.
+    Allows the user to permanently remove an item from the inventory.
+    The user can select an item from a list or input a UPC directly.
     """
     # Ensure the current database and tables exist
     check_current_db()
 
-    # Fetch all items in the inventory
-    items = search_db('current', 'inventory')
-
-    if not items:
-        print("The inventory is empty.")
-        return
-
-    # Display all items by name
-    print("Select an item to permanently remove:")
-    for idx, item in enumerate(items, start=1):
-        print(f"{idx}. {item[1]} ({item[2]})")  # Display the item name
+    # Ask the user how they want to find the item
+    print("Choose how you want to find the item to remove:")
+    print("1. Select from a list")
+    print("2. Enter a UPC")
 
     try:
-        # Prompt the user to select an item to remove
-        selection = int(input("Enter the number of the item to remove (0 to cancel): "))
+        method_choice = int(input("Enter your choice (1 or 2): "))
 
-        if selection == 0:
-            print("Operation canceled.")
+        # Option 1: Select from a list
+        if method_choice == 1:
+            # Fetch all items in the inventory
+            items = search_db('current', 'inventory')
+
+            if not items:
+                print("The inventory is empty.")
+                return
+
+            # Display all items by name
+            print("Select an item to remove:")
+            for idx, item in enumerate(items, start=1):
+                print(f"{idx}. {item[1]} ({item[2]})")  # Display the item name
+
+            # Prompt the user to select an item to remove
+            selection = int(input("Enter the number of the item to remove (0 to cancel): "))
+
+            if selection == 0:
+                print("Operation canceled.")
+                return
+
+            # Validate the selection
+            if 1 <= selection <= len(items):
+                item_id = items[selection - 1][0]  # Get the ID of the selected item
+                item_name = items[selection - 1][1]  # Get the name of the selected item
+            else:
+                print("Invalid selection. Please select a valid item number.")
+                return
+
+        # Option 2: Enter a UPC
+        elif method_choice == 2:
+            # Prompt the user to enter the UPC
+            upc = input("Enter the UPC of the item to remove: ")
+
+            # Check if item is in inventory
+            search = search_db('current', 'inventory', 'upc', upc)
+            if not search:
+                print(f"Item with UPC {upc} not found in the inventory.")
+                return
+
+            item_id = search[0][0]  # Get the ID of the selected item
+            item_name = search[0][1]  # Get the name of the selected item
+
+        else:
+            print("Invalid choice. Please select 1 or 2.")
             return
 
-        # Validate the selection
-        if 1 <= selection <= len(items):
-            item_id = items[selection - 1][0]  # Get the ID of the selected item
-            item_name = items[selection - 1][1]  # Get the name of the selected item
-
-            # Confirm removal
-            confirm = input(f"Are you sure you want to permanently remove '{item_name}'? (yes/no): ").strip().lower()
-            if confirm == 'yes':
-                # Remove the item using add_remove_db
-                add_remove_db('current', 'inventory', add=False, id=item_id)
-                print(f"Item '{item_name}' has been permanently removed.")
-            else:
-                print("Operation canceled.")
+        # Confirm removal
+        confirm = input(f"Are you sure you want to permanently remove '{item_name}'? (yes/no): ").strip().lower()
+        if confirm == 'yes':
+            # Remove the item using add_remove_db
+            add_remove_db('current', 'inventory', add=False, id=item_id)
+            print(f"Item '{item_name}' has been permanently removed.")
         else:
-            print("Invalid selection. Please select a valid item number.")
+            print("Operation canceled.")
 
     except ValueError:
         print("Invalid input. Please enter a number.")
+
 
 
 def edit_inventory_item():
