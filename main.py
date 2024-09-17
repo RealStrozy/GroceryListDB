@@ -1,5 +1,4 @@
 import configparser
-import random
 from escpos import printer
 import time
 from datetime import datetime, timezone
@@ -81,7 +80,7 @@ def check_current_db():
     # Make sure inventory db_table exists
     cur.execute('''CREATE TABLE IF NOT EXISTS inventory (
         ID INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT UNIQUE NOT NULL,
+        name TEXT NOT NULL,
         upc  INTEGER UNIQUE NOT NULL,
         qty INTEGER NOT NULL,
         description TEXT,
@@ -261,6 +260,7 @@ def user_items_to_inventory():
         search = search_db('current', 'inventory', 'upc', upc)
         if search:
             mod_qty_db('current', 'inventory', search[0][0], 1)
+            print(product_info['title'])  # noqa
 
         else:
             # Search for item UPC and parse
@@ -465,19 +465,6 @@ def r_l_justify(str_a, str_b, space_chr=' '):
     p.text(final) # Prints the justified line
 
 
-def main_menu():
-    print('1. Add items to inventory')
-    print('2. Remove items from inventory')
-    print('3. Create shopping list')
-    print('4. Set up default shopping lists')
-    print('5. Historical shopping lists')
-    print('6. Reports')
-    print('7. Print test page')
-    print('0. Exit')
-    choice = input('Enter your choice: ')
-    return choice
-
-
 def print_list(items, list_uuid = None, barcode = True):
     # Prints a shopping list with the given data
     if not list_uuid: # Checks to see if a UUID was supplied and if not generates one
@@ -494,6 +481,44 @@ def print_list(items, list_uuid = None, barcode = True):
     output = {'time_generated': creation_time, 'uuid': list_uuid, 'items': items}
     return output
 
+
+def inventory_report():
+    # Get all inventory
+    data = search_db('current', 'inventory', None, None)
+    items = [(item[1], item[3]) for item in data]
+
+    # Print report
+    print_header()
+    p.ln(2) # New line
+    p.set(double_height=True, double_width=True, align='center') # Set large test
+    p.text('Inventory Report') # Print text
+    p.ln(1)  # New line
+    p.hw('INIT') # Initializes printer
+    print_list(items, barcode=False)
+    p.cut() # Cut page
+
+
+def main_menu():
+    print('1. Add items to inventory')
+    print('2. Remove items from inventory')
+    print('3. Create shopping list')
+    print('4. Set up default shopping lists')
+    print('5. Historical shopping lists')
+    print('6. Reports')
+    print('7. Print test page')
+    print('0. Exit')
+    choice = input('Enter your choice: ')
+    return choice
+
+
+def reports_menu():
+    print('Reports')
+    print('1. Inventory')
+    print('2. Default lists')
+    print('0. Exit')
+    choice = input('Enter your choice: ')
+
+    return int(choice)
 
 def chr_test():
     # Test the character width of the printer
@@ -563,33 +588,35 @@ def print_debug(*args):
     return tests_ran
 
 
-class TestProduct:
-    # Creates a test product
-    def __init__(self, name: str, date_first_added: int, qty: int=1, notes: str = ''):
-        self.name = name
-        self.qty = qty
-        self.date_first_added = date_first_added
-        self.notes = notes
-        # Assigns a random primary key to simulate being received from a db
-        self.pk: int = int(random.uniform(0, 100000))
-        self.uuid = uuid.uuid4() # Assigns a random UUID to the product
+def main():
 
-    def random_qty(self):
-        # Gives the item a random quantity
-        self.qty = int((random.uniform(0, 15)))
+    while True:
+        # Display menu and run selections
+        selection = int(main_menu())
+
+        if selection == 0:
+            quit(0)
+
+        if selection == 1:
+            user_items_to_inventory()
+
+        if selection == 2:
+            user_items_from_inventory()
+
+        if selection == 6:
+            while True:
+                sub_selection = reports_menu()
+                if sub_selection == 0:
+                    break
+                if sub_selection == 1:
+                    inventory_report()
+
+        if selection == 7:
+            print_debug()
 
 
+# Set up escpos
 printer_config = read_config()
 p = printer_connect(printer_config)
 
-check_current_db()
-user_items_to_inventory()
-user_items_from_inventory()
-
-# Parse for list
-data = search_db('current', 'inventory', None, None)
-print(data)
-items = [(item[1], item[3]) for item in data]
-print(items)
-print(print_list(items))
-p.cut()
+main()
