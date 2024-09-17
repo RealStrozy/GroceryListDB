@@ -574,7 +574,6 @@ def list_test():
     p.set(align='center', custom_size=True, height=4, width=4, invert=True)  # Set text properties for header
     p.text('LIST TEST\n')
     p.hw('INIT')  # Initializes printer after header
-    # TODO add "real" data from TestProduct
     data_out = print_list(['Apple', 1, 'Milk', 14, 'Banana', 69, 'Soda', 4])
     p.hw('INIT')  # Initialize hardware
     p.ln(1)
