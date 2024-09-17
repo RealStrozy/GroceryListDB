@@ -5,6 +5,7 @@ import sqlite3
 import requests
 from datetime import datetime, timezone
 from escpos import printer
+import re
 
 
 class BColors:
@@ -765,6 +766,95 @@ def print_shopping_list(items):
             print(f"Error adding item '{item_name}' to history database: {e}")
 
 
+import re
+
+def print_historical_list():
+    """
+    Prints historical shopping lists based on a date or UUID provided by the user.
+    """
+    check_history_db()
+
+    # Prompt user for input (UUID or date)
+    search_input = input("Enter the date (YYYY-MM-DD) or UUID to search for historical lists: ").strip()
+
+    # Regular expression pattern to match a UUID format
+    uuid_pattern = re.compile(r'^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$')
+
+    # Initialize variables for the search
+    lists = []
+
+    # Determine if input is a UUID or a date
+    if uuid_pattern.match(search_input):
+        # Input is a UUID
+        uuid_to_search = search_input
+
+        # Query the database by UUID
+        with sqlite3.connect('./.data/history.db') as db:
+            cur = db.cursor()
+            query = '''
+                SELECT UUID, creation_time FROM lists
+                WHERE UUID = ?
+            '''
+            cur.execute(query, (uuid_to_search,))
+            lists = cur.fetchall()
+
+    else:
+        # Input is not a UUID, try to parse as a date
+        try:
+            # Convert date_str to a time range in UNIX time
+            date_start = datetime.strptime(search_input, "%Y-%m-%d")
+            unix_start = int(date_start.replace(tzinfo=timezone.utc).timestamp())
+            unix_end = unix_start + 86400  # Adds one day worth of seconds (86400) to get the end of the day
+
+            # Query the database by date range
+            with sqlite3.connect('./.data/history.db') as db:
+                cur = db.cursor()
+                query = '''
+                    SELECT UUID, creation_time FROM lists
+                    WHERE creation_time BETWEEN ? AND ?
+                '''
+                cur.execute(query, (unix_start, unix_end))
+                lists = cur.fetchall()
+
+        except ValueError:
+            # If parsing as a date fails, it's an invalid input
+            print("Invalid input. Please enter a valid UUID or date in YYYY-MM-DD format.")
+            return
+
+    if not lists:
+        print("No historical lists found for the specified input.")
+        return
+
+    # For each list, fetch the items and print the list
+    for list_uuid, creation_time in lists:
+        # Convert creation_time to a formatted date string
+        created_date = time.strftime('%Y-%m-%d %H:%M:%S (UTC)', time.gmtime(creation_time))
+
+        # Retrieve the items for this list
+        with sqlite3.connect('./.data/history.db') as db:
+            cur = db.cursor()
+            query = '''
+                SELECT name, qty FROM lists_items
+                WHERE default_lists_id = ?
+            '''
+            cur.execute(query, (list_uuid,))
+            items = cur.fetchall()
+
+        # Print the historical list using the prepared format
+        print_header()
+        p.ln(2)
+        p.set(double_height=True, double_width=True, align='center', invert=True)
+        p.text(f'REPRINT\n{created_date}')
+        p.ln(2)
+        p.set(invert=False)
+        p.text('Shopping List')
+        p.ln(2)
+        p.hw('INIT')
+
+        print_list(items, list_uuid=list_uuid)
+        p.cut()
+
+
 def reports_menu():
     """
     Displays the reports menu and handles user choices.
@@ -872,8 +962,7 @@ def main_menu():
         elif choice == '4':
             default_shopping_list_menu()
         elif choice == '5':
-            # Historical shopping lists (function call goes here)
-            pass
+            print_historical_list()
         elif choice == '6':
             reports_menu()
         elif choice == '7':
