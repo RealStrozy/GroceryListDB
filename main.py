@@ -472,7 +472,8 @@ def edit_default_shopping_list():
 
     while True:
         # Loop for selecting add or remove mode
-        action = input("Enter 'add' to add items, 'remove' to remove items, 'exit' to finish: ").lower()
+        action = (input("Enter 'add' to add items, 'remove' to remove items, 'exit' to finish: ").strip() or 'exit')
+
 
         if action == 'exit':
             break
@@ -491,7 +492,11 @@ def edit_default_shopping_list():
                 item_name, description, category, upc = item_info
 
                 # Get the quantity and the current time
-                qty = int(input("Enter quantity: "))
+                try:
+                    qty = int(input("Enter quantity: "))
+                except ValueError:
+                    print("Invalid input.")
+                    return []
                 time_added = int(time.time())
 
                 # Add the item to the default shopping list
@@ -808,11 +813,11 @@ def create_shopping_list():
 
     # Sub-loop for adding additional items
     while True:
-        action = input("Would you like to manually add more items? (yes/no): ").lower()
+        action = (input('Would you like to manually add more items? (yes/no): ').strip() or 'no')
 
-        if action == 'no':
+        if action == 'no' or action == '0':
             break
-        elif action != 'yes':
+        elif action != 'yes' or action != '1':
             print("Invalid action. Please enter 'yes' or 'no'.")
             continue
 
@@ -825,7 +830,11 @@ def create_shopping_list():
             item_name, description, category, upc = item_info
 
             # Get the quantity and add the item to the additional_items list
-            qty = int(input("Enter quantity: "))
+            try:
+                qty = int(input("Enter quantity: "))
+            except ValueError:
+                print("Invalid input.")
+                return []
             additional_items.append((item_name, qty))
 
     # Compare additional items to the current inventory
@@ -846,7 +855,7 @@ def create_shopping_list():
     # Combine the items needed from the default list and the additional items
     combined_items_needed = items_needed + additional_items_to_add
 
-    print(f"Final list of items and quantities needed: {combined_items_needed}")
+    print(f"Final list of items and quantities needed: {combined_items_needed}\n")
     return combined_items_needed
 
 
@@ -900,7 +909,6 @@ def print_shopping_list(items):
                 name=item_name,
                 qty=qty
             )
-            print(f"Item '{item_name}' with quantity {qty} added to 'history' database under list UUID {list_uuid}.")
         except Exception as e:
             print(f"Error adding item '{item}' to history database: {e}")
 
