@@ -236,8 +236,9 @@ def get_item_info_by_upc():
 
         # Fetch information from the API
         fetch, remaining, reset = fetch_info(upc)
-        until = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(int(reset)))
-        print(f"You have {remaining} search(es) remaining until {until}.")
+        if remaining and reset:
+            until = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(int(reset)))
+            print(f"You have {remaining} search(es) remaining until {until}.")
 
         if fetch:
             product_info = fetch[0]
