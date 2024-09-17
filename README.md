@@ -47,14 +47,6 @@ Modify these values to match your printer's specifications.
 
 ## Usage
 
-### Running the Program
-
-Run the program using Python:
-
-```bash
-python grocery_list_db.py
-```
-
 ### Main Menu Options
 
 1. **Add items to inventory**: Add items to your inventory manually or by scanning UPCs.
