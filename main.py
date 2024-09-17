@@ -478,7 +478,10 @@ def r_l_justify(str_a, str_b, space_chr=' '):
         return 'SPACE_CHR CANNOT BE LONGER THAN 1'
     both_length = len(str_a) + len(str_b) # Gets the total len of both str
     if both_length > int(printer_config['chr_width']): # Makes sure that both str fit
-        return 'TOO LONG FOR R-L JUSTIFY'
+        amt_to_trim = int(printer_config['chr_width']) - (len(str_b) + 5)
+        str_a = str_a[:amt_to_trim]
+        str_a += '...'
+        both_length = len(str_a) + len(str_b)
     added_chr = int(printer_config['chr_width']) - both_length
     spaces = space_chr * added_chr # Generates the needed spaces
     final = str_a + spaces + str_b # Combines everything
@@ -493,7 +496,6 @@ def print_list(items, list_uuid = None, barcode = True):
     creation_time = int(time.time())
     # Print items justified r to l
     for x in items:
-        # TODO add check to verify name length and cut if too long
         r_l_justify(str(x[0]),str(x[1])) # Prints name and qty r-l justified
     p.ln(1)  # new line after items
     if barcode:
