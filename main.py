@@ -6,6 +6,7 @@ import requests
 from datetime import datetime, timezone
 from escpos import printer
 import re
+import os
 
 
 class BColors:
@@ -990,6 +991,7 @@ def main_menu():
 
 
 if __name__ == "__main__":
+    os.makedirs('./.data', exist_ok=True)
     printer_config = read_config()
     p = printer_connect(printer_config)
     main_menu()
