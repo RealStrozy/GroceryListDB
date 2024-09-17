@@ -781,7 +781,7 @@ def print_historical_list():
     uuid_pattern = re.compile(r'^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$')
 
     # Initialize variables for the search
-    lists = []
+    lists = [] # noqa
 
     # Determine if input is a UUID or a date
     if uuid_pattern.match(search_input):
@@ -854,7 +854,7 @@ def print_historical_list():
         p.cut()
 
 
-def print_all_Default_lists():
+def print_all_default_lists():
     """
     Retrieves all default shopping lists with their items and quantities and prints it.
     Returns:
@@ -920,7 +920,7 @@ def reports_menu():
         elif choice == '1':
             inventory_report()
         elif choice == '2':
-            print_all_Default_lists()
+            print_all_default_lists()
         else:
             print('Invalid choice. Please select a valid option.')
 
