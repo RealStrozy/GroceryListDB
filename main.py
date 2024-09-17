@@ -85,6 +85,33 @@ def printer_connect(config):
     return esc_pos
 
 
+def check_history_db():
+    db = sqlite3.connect(f'./.data/history.db')  # Defines DB
+    cur = db.cursor()  # Defines cursor
+
+    # Make sure default_lists db_table exists
+    cur.execute('''CREATE TABLE IF NOT EXISTS lists (
+        ID INTEGER PRIMARY KEY AUTOINCREMENT,
+        UUID TEXT UNIQUE NOT NULL,
+        creation_time INTEGER UNIQUE NOT NULL
+    )''')
+    db.commit()
+
+    # Make sure default_lists_items db_table exists
+    cur.execute('''CREATE TABLE IF NOT EXISTS lists_items (
+        ID INTEGER PRIMARY KEY AUTOINCREMENT,
+        default_lists_id INTEGER,
+        name TEXT NOT NULL,
+        qty INTEGER NOT NULL,
+        FOREIGN KEY (default_lists_id) REFERENCES default_lists(UUID)
+    )''')
+    db.commit()
+
+    # Closes up shop
+    cur.close()
+    db.close()
+
+
 def check_current_db():
     db = sqlite3.connect(f'./.data/current.db')  # Defines DB
     cur = db.cursor()  # Defines cursor
@@ -178,7 +205,7 @@ def add_remove_db(database: str, db_table: str, add=True, **kwargs):
             db.commit()
 
         except sqlite3.IntegrityError: # If it exists
-            print(kwargs['name'], 'already in database.')
+            print('Already in database.')
             return
 
     else:
@@ -332,7 +359,7 @@ def user_items_to_inventory():
         search = search_db('current', 'inventory', 'upc', upc)
         if search:
             mod_qty_db('current', 'inventory', search[0][0], 1)
-            print(product_info['title'])  # noqa
+            print(search[0][1])  # noqa
 
         else:
             # Search for item UPC and parse
@@ -388,13 +415,14 @@ def user_items_from_inventory():
         if search: # Checks and makes sure item is in inventory
             if not int(search[0][3]) <= 0:
                 mod_qty_db('current', 'inventory', search[0][0], add=False)  # Removes 1 qty
+                print(search[0][1])
 
             else:
-                print(f'{search[0][1]} has 0 in inventory already.')
+                print(BColors.WARNING +  f'{search[0][1]} has 0 in inventory already.' + BColors.END_C)
 
 
         else: # If not in inventory let user know
-            print('Item is not currently in inventory.')
+            print(BColors.WARNING + 'Item is not currently in inventory.' + BColors.END_C)
 
 
 def add_default_shopping_list(list_name):
@@ -686,8 +714,8 @@ def print_list(items, list_uuid = None, barcode = True):
     if barcode:
         print_pdf417(str(list_uuid), width=3) # Prints list UUID as pdf417 barcode
     # Prepare output data
-    output = {'time_generated': creation_time, 'uuid': list_uuid, 'items': items}
-    return output
+    output = {'time_generated': creation_time, 'uuid': list_uuid}
+    return output, items
 
 
 def inventory_report():
@@ -753,7 +781,7 @@ def create_shopping_list():
 
     if not shopping_lists:
         print("No default shopping lists available.")
-        return []
+        return
 
     print("Default Shopping Lists:")
     for idx, shopping_list in enumerate(shopping_lists, start=1):
@@ -820,6 +848,61 @@ def create_shopping_list():
 
     print(f"Final list of items and quantities needed: {combined_items_needed}")
     return combined_items_needed
+
+
+def print_shopping_list(items):
+    # Ensure history DB is online
+    check_history_db()
+
+    # Verify items
+    if not items:
+        return
+
+    # Print list
+    print_header()
+    p.ln(2)  # New line
+    p.set(double_height=True, double_width=True, align='center')  # Set large text
+    p.text('Shopping list')  # Print text
+    p.ln(2)  # New line
+    p.hw('INIT')  # Initializes printer
+
+    # Generate the list and get the output dictionary and items
+    output, items = print_list(items)
+
+    # Extract creation_time and list_uuid from the output dictionary
+    creation_time = output['time_generated']
+    list_uuid = str(output['uuid'])
+
+    p.cut() # Cuts paper
+
+    # Add the list UUID and creation time to the 'history' database in the 'lists' table
+    try:
+        add_remove_db(
+            database='history',
+            db_table='lists',
+            add=True,
+            UUID=list_uuid,
+            creation_time=creation_time
+        )
+    except Exception as e:
+        print(f"Error adding list to history database: {e}")
+
+    # Add each item to the 'history' database in the 'default_lists_items' table
+    for item in items:
+        try:
+            # Ensure that item is a tuple with two elements
+            item_name, qty = item
+            add_remove_db(
+                database='history',
+                db_table='lists_items',
+                add=True,
+                default_lists_id=list_uuid,  # Use the UUID as the foreign key reference
+                name=item_name,
+                qty=qty
+            )
+            print(f"Item '{item_name}' with quantity {qty} added to 'history' database under list UUID {list_uuid}.")
+        except Exception as e:
+            print(f"Error adding item '{item}' to history database: {e}")
 
 
 def reports_menu():
@@ -967,6 +1050,9 @@ def main_menu():
 
         elif choice == '2':
             user_items_from_inventory()
+
+        elif choice == '3':
+            print_shopping_list(create_shopping_list())
 
         elif choice == '4':
             # Call the default shopping list submenu
