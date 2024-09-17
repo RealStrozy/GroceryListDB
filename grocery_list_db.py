@@ -122,7 +122,7 @@ def check_current_db():
     check_db('current', tables)
 
 
-def search_db(database, db_table, term=None, value=None):
+def search_db(database, db_table, term=None, value=None, sort_by=None, sort_desc=True):
     """
     Searches for records in the database table.
     Args:
@@ -130,17 +130,33 @@ def search_db(database, db_table, term=None, value=None):
         db_table (str): Table name.
         term (str, optional): Column name to search in. Defaults to None.
         value (str, optional): Value to match in the column. Defaults to None.
+        sort_by (str, optional): Value to sort by
     Returns:
         list: List of matching rows.
     """
     with sqlite3.connect(f'./.data/{database}.db') as db:
         cur = db.cursor()
-        if term and value:
+        if term and value and sort_by:
+            query = f'SELECT * FROM {db_table} WHERE {term} = ? ORDER BY {sort_by} DESC'
+            cur.execute(query, (value,))
+
+        elif term and value:
             query = f'SELECT * FROM {db_table} WHERE {term} = ?'
             cur.execute(query, (value,))
+
+        elif sort_by:
+            if sort_desc:
+                query = f'SELECT * FROM {db_table} ORDER BY {sort_by} DESC'
+                cur.execute(query)
+
+            else:
+                query = f'SELECT * FROM {db_table} ORDER BY {sort_by} DESC'
+                cur.execute(query)
+
         else:
             query = f'SELECT * FROM {db_table}'
             cur.execute(query)
+
         return cur.fetchall()
 
 
@@ -830,7 +846,8 @@ def inventory_report():
     """
     Generates and prints the inventory report.
     """
-    items = [(item[1], item[3]) for item in search_db('current', 'inventory')]
+    items = [(item[1], item[3]) for item in search_db('current', 'inventory', sort_by='qty')]
+    items_w_qty = [item for item in items if item[1] != 0]
 
     print_header()
     p.ln(2)
@@ -838,7 +855,7 @@ def inventory_report():
     p.text('Inventory Report')
     p.ln(2)
     p.hw('INIT')
-    print_list(items, barcode=False)
+    print_list(items_w_qty, barcode=False)
     p.cut()
 
 
