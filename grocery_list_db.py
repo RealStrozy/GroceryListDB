@@ -447,6 +447,53 @@ def delete_default_shopping_list(list_name):
         print(f"Items associated with '{list_name}' have been deleted.")
 
 
+def remove_item_permanently():
+    """
+    Lists all items in the inventory and allows the user to permanently remove one.
+    """
+    # Ensure the current database and tables exist
+    check_current_db()
+
+    # Fetch all items in the inventory
+    items = search_db('current', 'inventory')
+
+    if not items:
+        print("The inventory is empty.")
+        return
+
+    # Display all items by name
+    print("Select an item to permanently remove:")
+    for idx, item in enumerate(items, start=1):
+        print(f"{idx}. {item[1]} ({item[2]})")  # Display the item name
+
+    try:
+        # Prompt the user to select an item to remove
+        selection = int(input("Enter the number of the item to remove (0 to cancel): "))
+
+        if selection == 0:
+            print("Operation canceled.")
+            return
+
+        # Validate the selection
+        if 1 <= selection <= len(items):
+            item_id = items[selection - 1][0]  # Get the ID of the selected item
+            item_name = items[selection - 1][1]  # Get the name of the selected item
+
+            # Confirm removal
+            confirm = input(f"Are you sure you want to permanently remove '{item_name}'? (yes/no): ").strip().lower()
+            if confirm == 'yes':
+                # Remove the item using add_remove_db
+                add_remove_db('current', 'inventory', add=False, id=item_id)
+                print(f"Item '{item_name}' has been permanently removed.")
+            else:
+                print("Operation canceled.")
+        else:
+            print("Invalid selection. Please select a valid item number.")
+
+    except ValueError:
+        print("Invalid input. Please enter a number.")
+
+
 def print_pdf417(content, width=2, rows=0, height_multiplier=0, data_column_count=0, ec=20, options=0):
     """
     Generate and send a PDF417 barcode command sequence to the printer.
@@ -954,6 +1001,22 @@ def default_shopping_list_menu():
             print('Invalid choice. Please select a valid option.')
 
 
+def admin_menu():
+    print(f"{BColors.HEADER}Administrator Options{BColors.END_C}")
+    print('1. Remove items from inventory database table')
+    print('0. Main menu')
+
+    choice = input('Enter your choice: ')
+
+    if choice == '0':
+        quit(0)
+    elif choice == '1':
+        remove_item_permanently()
+
+    else:
+        print('Invalid choice. Please select a valid option.')
+
+
 def main_menu():
     """
     Displays the main menu and handles user choices.
@@ -966,7 +1029,7 @@ def main_menu():
         print('4. Set up default shopping lists')
         print('5. Historical shopping lists')
         print('6. Reports')
-        print('7. Print test page')
+        print('7. Administrator Options')
         print('0. Exit')
 
         choice = input('Enter your choice: ')
@@ -985,6 +1048,8 @@ def main_menu():
             print_historical_list()
         elif choice == '6':
             reports_menu()
+        elif choice == '7':
+            admin_menu()
         else:
             print('Invalid choice. Please select a valid option.')
 
