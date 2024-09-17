@@ -389,7 +389,7 @@ def edit_default_shopping_list():
         action = input("Enter 'add'(1) to add items, 'remove' to remove items, 'exit'(0) to finish: ").strip().lower()
         if action == 'exit' or action == '0':
             break
-        elif action not in ('add', 'remove'):
+        elif action not in ('add', 'remove', '1'):
             print("Invalid action.")
             continue
 
