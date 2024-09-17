@@ -34,6 +34,7 @@ if [ ! -f "grocery_list_db.py" ]; then
 fi
 
 echo "Launching grocery_list_db.py..."
+clear
 python grocery_list_db.py
 
 # Deactivate the virtual environment after the script ends
