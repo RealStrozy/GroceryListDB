@@ -520,6 +520,7 @@ def reports_menu():
 
     return int(choice)
 
+
 def chr_test():
     # Test the character width of the printer
     p.hw('INIT')  # Initialize hardware
