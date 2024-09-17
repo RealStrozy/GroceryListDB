@@ -292,9 +292,17 @@ def user_items_to_inventory():
                     'time_first_added': int(time.time())
                 }
             else:
-                item_name = input(f'{BColors.WARNING}Enter product name (0 for exit): {BColors.END_C}')
-                if item_name == '0':
-                    return
+                while True:
+                    item_name = input(f'{BColors.WARNING}Enter product name (0 for exit): {BColors.END_C}')
+                    if item_name == '0':
+                        return
+                    # Check if the name is only numbers
+                    if item_name.isdigit():
+                        print(
+                            f"{BColors.FAIL}Invalid name. Please enter a name that is not just numbers.{BColors.END_C}")
+                    else:
+                        break
+
                 description = input("Enter description: ")
                 new_item = {
                     'name': item_name,
@@ -305,6 +313,7 @@ def user_items_to_inventory():
                 }
 
             add_remove_db('current', 'inventory', add=True, **new_item)
+            print(f"Item '{new_item['name']}' has been added to the inventory.")
 
 
 def user_items_from_inventory():
