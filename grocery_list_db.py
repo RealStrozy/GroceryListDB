@@ -386,15 +386,15 @@ def edit_default_shopping_list():
     list_id = shopping_lists[selection - 1][0]
 
     while True:
-        action = input("Enter 'add' to add items, 'remove' to remove items, 'exit' to finish: ").strip().lower()
-        if action == 'exit':
+        action = input("Enter 'add'(1) to add items, 'remove' to remove items, 'exit'(0) to finish: ").strip().lower()
+        if action == 'exit' or action == '0':
             break
         elif action not in ('add', 'remove'):
             print("Invalid action.")
             continue
 
         while True:
-            if action == 'add':
+            if action == 'add' or action == '1':
                 item_info = get_item_info_by_upc()
                 if not item_info:
                     break
