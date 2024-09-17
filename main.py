@@ -8,6 +8,18 @@ import requests
 import json
 
 
+class BColors:
+    HEADER = '\033[95m'
+    OK_BLUE = '\033[94m'
+    OK_CYAN = '\033[96m'
+    OK_GREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    END_C = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+
 def read_config():
     try:
         # Create a ConfigParser object
@@ -280,7 +292,16 @@ def user_items_to_inventory():
 
             else: # If no info was found, prompt user
                 # Structure user input
-                new_item = {'name': input('Enter name: '), 'upc': upc,
+                while True:
+                    possible_name = input(BColors.WARNING + 'Enter product name (0 for exit): ' + BColors.END_C)
+                    try:
+                        if int(possible_name) == 0:
+                            return
+                    except ValueError:
+                        name = possible_name
+                        break
+
+                new_item = {'name': name, 'upc': upc,
                             'qty': 1, 'description': input('Enter description:'), 'time_first_added': cur_time}
 
             add_remove_db('current', 'inventory',
@@ -499,6 +520,7 @@ def inventory_report():
 
 
 def main_menu():
+    print(BColors.HEADER + 'GroceryListDB' + BColors.END_C)
     print('1. Add items to inventory')
     print('2. Remove items from inventory')
     print('3. Create shopping list')
@@ -512,7 +534,7 @@ def main_menu():
 
 
 def reports_menu():
-    print('Reports')
+    print(BColors.HEADER + 'Reports' + BColors.END_C)
     print('1. Inventory')
     print('2. Default lists')
     print('0. Exit')
