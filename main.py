@@ -766,7 +766,6 @@ def print_shopping_list(items):
             print(f"Error adding item '{item_name}' to history database: {e}")
 
 
-import re
 
 def print_historical_list():
     """
@@ -850,9 +849,57 @@ def print_historical_list():
         p.text('Shopping List')
         p.ln(2)
         p.hw('INIT')
-
         print_list(items, list_uuid=list_uuid)
         p.cut()
+
+
+def print_all_Default_lists():
+    """
+    Retrieves all default shopping lists with their items and quantities and prints it.
+    Returns:
+        list: A list of lists containing tuples for each default list.
+              Each tuple contains (item_name, quantity).
+    """
+    check_current_db()  # Ensure the database and tables exist
+
+    # This will store the final result
+    all_lists_with_items = []
+
+    # Connect to the 'current.db' database
+    with sqlite3.connect('./.data/current.db') as db:
+        cur = db.cursor()
+
+        # First, fetch all default lists
+        cur.execute('SELECT ID, name FROM default_lists')
+        default_lists = cur.fetchall()
+
+        # For each default list, fetch the associated items
+        for list_id, list_name in default_lists:
+            # Retrieve all items for this list
+            cur.execute('''
+                SELECT name, qty
+                FROM default_lists_items
+                WHERE default_lists_id = ?
+            ''', (list_id,))
+            items = cur.fetchall()  # This will be a list of tuples (item_name, quantity)
+
+            # Append the list name and its items to the final result
+            all_lists_with_items.append((list_name, items))
+
+            # Prints list
+            print_header()
+            p.ln(2)
+            p.set(double_height=True, double_width=True, align='center', invert=True)
+            p.text(f'DEFAULT LIST')
+            p.ln(2)
+            p.set(double_height=True, double_width=True, align='center', invert=False)
+            p.text(list_name)
+            p.ln(2)
+            p.hw('INIT')
+            print_list(items, barcode=False)
+            p.cut()
+
+    return all_lists_with_items
 
 
 def reports_menu():
@@ -872,8 +919,7 @@ def reports_menu():
         elif choice == '1':
             inventory_report()
         elif choice == '2':
-            # Placeholder for default lists report function call
-            pass
+            print_all_Default_lists()
         else:
             print('Invalid choice. Please select a valid option.')
 
@@ -903,35 +949,6 @@ def default_shopping_list_menu():
             delete_default_shopping_list(list_name)
         else:
             print('Invalid choice. Please select a valid option.')
-
-
-# def print_debug(*args):
-#     """
-#     Runs debug print functions based on the arguments provided.
-#     Args:
-#         *args: Test functions to run. If none, runs all available tests.
-#     Returns:
-#         str: Log of tests ran.
-#     """
-#     tests_list = {
-#         'header': print_header,
-#         'chr': chr_test,
-#         'pdf417': pdf417_test,
-#         'list': list_test
-#     }
-#
-#     if 'get_list' in args:
-#         return tests_list
-#
-#     tests_to_run = tests_list.items() if not args else [(name, func) for name, func in tests_list.items() if name in args]
-#     tests_ran = ''
-#
-#     for test_name, func in tests_to_run:
-#         func()
-#         p.ln(2)
-#         tests_ran += f"{test_name} "
-#     p.cut()
-#     return tests_ran
 
 
 def main_menu():
