@@ -503,6 +503,99 @@ def remove_item_permanently():
         print("Invalid input. Please enter a number.")
 
 
+def edit_inventory_item():
+    """
+    Allows the user to edit the name and description of an item in the inventory.
+    The user can select an item from a list or input a UPC directly.
+    """
+    # Ensure the current database and tables exist
+    check_current_db()
+
+    # Ask the user how they want to find the item
+    print("Choose how you want to find the item to edit:")
+    print("1. Select from a list")
+    print("2. Enter a UPC")
+
+    try:
+        method_choice = int(input("Enter your choice (1 or 2): "))
+
+        # Option 1: Select from a list
+        if method_choice == 1:
+            # Fetch all items in the inventory
+            items = search_db('current', 'inventory')
+
+            if not items:
+                print("The inventory is empty.")
+                return
+
+            # Display all items by name
+            print("Select an item to edit:")
+            for idx, item in enumerate(items, start=1):
+                print(f"{idx}. {item[1]} ({item[2]})")  # Display the item name and description
+
+            # Prompt the user to select an item to edit
+            selection = int(input("Enter the number of the item to edit (0 to cancel): "))
+
+            if selection == 0:
+                print("Operation canceled.")
+                return
+
+            # Validate the selection
+            if 1 <= selection <= len(items):
+                item_id = items[selection - 1][0]  # Get the ID of the selected item
+                current_name = items[selection - 1][1]  # Current name of the selected item
+                current_description = items[selection - 1][4]  # Current description
+            else:
+                print("Invalid selection. Please select a valid item number.")
+                return
+
+        # Option 2: Enter a UPC
+        elif method_choice == 2:
+            # Prompt the user to enter the UPC
+            upc = input("Enter the UPC of the item to edit: ")
+
+            # Check if item is in inventory
+            search = search_db('current', 'inventory', 'upc', upc)
+            if not search:
+                print(f"Item with UPC {upc} not found in the inventory.")
+                return
+
+            item_id = search[0][0]  # Get the ID of the selected item
+            current_name = search[0][1]  # Current name of the selected item
+            current_description = search[0][4]  # Current description
+
+        else:
+            print("Invalid choice. Please select 1 or 2.")
+            return
+
+        # Edit item name
+        while True:
+            new_name = input(f"Enter new name for '{current_name}' (or press Enter to keep current name): ").strip()
+            if new_name == "":
+                new_name = current_name  # Keep the current name if the user doesn't enter a new one
+                break
+            elif new_name.isdigit():
+                print(f"{BColors.FAIL}Invalid name. Please enter a name that is not just numbers.{BColors.END_C}")
+            else:
+                break
+
+        # Edit item description
+        new_description = input(f"Enter new description for '{current_name}' (or press Enter to keep current description): ").strip()
+        if new_description == "":
+            new_description = current_description  # Keep the current description if the user doesn't enter a new one
+
+        # Update the item in the database
+        with sqlite3.connect(f'./.data/current.db') as db:
+            cur = db.cursor()
+            cur.execute('UPDATE inventory SET name = ?, description = ? WHERE ID = ?', (new_name, new_description, item_id))
+            db.commit()
+            print(f"Item '{current_name}' has been updated to '{new_name}' with the new description.")
+
+    except ValueError:
+        print("Invalid input. Please enter a valid number.")
+
+
+
 def print_pdf417(content, width=2, rows=0, height_multiplier=0, data_column_count=0, ec=20, options=0):
     """
     Generate and send a PDF417 barcode command sequence to the printer.
@@ -1012,7 +1105,8 @@ def default_shopping_list_menu():
 
 def admin_menu():
     print(f"{BColors.HEADER}Administrator Options{BColors.END_C}")
-    print('1. Remove items from inventory database table')
+    print('1. Edit items')
+    print('"del". Remove items from inventory database table')
     print('0. Main menu')
 
     choice = input('Enter your choice: ')
@@ -1020,6 +1114,8 @@ def admin_menu():
     if choice == '0':
         quit(0)
     elif choice == '1':
+        edit_inventory_item()
+    elif choice == 'del':
         remove_item_permanently()
 
     else:
