@@ -955,18 +955,30 @@ def create_shopping_list():
 
     additional_items = []
     while True:
-        action = input('Would you like to manually add more items? (yes/no): ').strip().lower()
-        if action == 'no':
+        action = input('Would you like to manually add more items? yes(1) no(0)'
+                       ' or "hand" for handwritten items : ').strip().lower()
+        if action == 'no' or action == '0':
             break
-        elif action == 'yes':
+        elif action == 'yes' or action == '1':
             item_name, description, category, upc = get_item_info_by_upc()
             try:
                 qty = int(input("Enter quantity: "))
+                additional_items.append((item_name, qty))
             except ValueError:
                 print("Invalid input.")
                 continue
+        elif action == 'hand':
+            while True:
+                item_name = input('Item name (0 to go back): ').strip()
+                if item_name == '0':
+                    break
+                try:
+                    qty = int(input("Enter quantity: "))
+                    additional_items.append((item_name, qty))
+                except ValueError:
+                    print("Invalid input.")
+                    continue
 
-            additional_items.append((item_name, qty))
 
     additional_items_to_add = []
     for item_name, qty in additional_items:
