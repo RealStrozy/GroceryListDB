@@ -1077,7 +1077,7 @@ def print_historical_list():
                 cur = db.cursor()
                 query = '''
                     SELECT UUID, creation_time FROM lists
-                    WHERE creation_time BETWEEN ? AND ?
+                    WHERE creation_time BETWEEN ? AND ? ORDER BY creation_time DESC
                 '''
                 cur.execute(query, (unix_start, unix_end))
                 lists = cur.fetchall()
@@ -1106,18 +1106,32 @@ def print_historical_list():
             cur.execute(query, (list_uuid,))
             items = cur.fetchall()
 
-        # Print the historical list using the prepared format
-        print_header()
-        p.ln(2)
-        p.set(double_height=True, double_width=True, align='center', invert=True)
-        p.text(f'REPRINT\n{created_date}')
-        p.ln(2)
-        p.set(invert=False)
-        p.text('Shopping List')
-        p.ln(2)
-        p.hw('INIT')
-        print_list(items, list_uuid=list_uuid)
-        p.cut()
+        # Give user option to print
+        print('List from: ' + created_date)
+        action = input('Print no(1), yes(2), or exit(0): ')
+        if action == 'exit' or action == '0':
+            break
+
+        elif action == 'yes' or action == '2':
+            # Print the historical list using the prepared format
+            print_header()
+            p.ln(2)
+            p.set(double_height=True, double_width=True, align='center', invert=True)
+            p.text(f'REPRINT\n{created_date}')
+            p.ln(2)
+            p.set(invert=False)
+            p.text('Shopping List')
+            p.ln(2)
+            p.hw('INIT')
+            print_list(items, list_uuid=list_uuid)
+            p.cut()
+
+        elif action == 'no' or action == '1':
+            continue
+
+        else:
+            print('Invalid choice. Please select a valid option.')
+
 
 
 def print_all_default_lists():
