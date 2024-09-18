@@ -296,7 +296,7 @@ def user_items_to_inventory():
         search = search_db('current', 'inventory', 'upc', upc)
         if search:
             mod_qty_db('current', 'inventory', search[0][0], 1)
-            print(search[0][1])
+            print(search[0][1] + ' | Current quantity: ' + str((search[0][3] + 1)))
         else:
             fetch, remaining, reset = fetch_info(upc)
             if remaining and reset:
@@ -335,7 +335,7 @@ def user_items_to_inventory():
                 }
 
             add_remove_db('current', 'inventory', add=True, **new_item)
-            print(f"Item '{new_item['name']}' has been added to the inventory.")
+            print(f"Item '{new_item['name']}' has been added to the inventory. | Current quantity: 1")
 
 
 def user_items_from_inventory():
@@ -355,7 +355,7 @@ def user_items_from_inventory():
         if search:
             if search[0][3] > 0:
                 mod_qty_db('current', 'inventory', search[0][0], add=False)
-                print(search[0][1])
+                print(search[0][1] + ' | Current quantity: ' + str((search[0][3] - 1)))
             else:
                 print(f'{BColors.WARNING}{search[0][1]} has 0 in inventory already.{BColors.END_C}')
         else:
