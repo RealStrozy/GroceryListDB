@@ -131,6 +131,7 @@ def search_db(database, db_table, term=None, value=None, sort_by=None, sort_desc
         term (str, optional): Column name to search in. Defaults to None.
         value (str, optional): Value to match in the column. Defaults to None.
         sort_by (str, optional): Value to sort by
+        sort_desc (bool): Allows sorting ASS or DESC
     Returns:
         list: List of matching rows.
     """
@@ -1106,18 +1107,39 @@ def print_all_default_lists():
             # Append the list name and its items to the final result
             all_lists_with_items.append((list_name, items))
 
-            # Prints list
-            print_header()
-            p.ln(2)
-            p.set(double_height=True, double_width=True, align='center', invert=True)
-            p.text(f'DEFAULT LIST')
-            p.ln(2)
-            p.set(double_height=True, double_width=True, align='center', invert=False)
-            p.text(list_name)
-            p.ln(2)
-            p.hw('INIT')
-            print_list(items, barcode=False)
-            p.cut()
+            # Shows user the list
+            print(BColors.HEADER + list_name + BColors.END_C)
+            for name, qty in items:
+                print(name + ', ' + str(qty))
+
+            # Ask use if they want to print the list
+            print('\n1. Print')
+            print('2. Continue')
+            print('0. Exit')
+            choice = input('Enter your choice: ')
+
+            if choice == '0':
+                break
+
+            elif choice == '1':
+                # Prints list
+                print_header()
+                p.ln(2)
+                p.set(double_height=True, double_width=True, align='center', invert=True)
+                p.text(f'DEFAULT LIST')
+                p.ln(2)
+                p.set(double_height=True, double_width=True, align='center', invert=False)
+                p.text(list_name)
+                p.ln(2)
+                p.hw('INIT')
+                print_list(items, barcode=False)
+                p.cut()
+
+            elif choice == '2':
+                pass
+
+            else:
+                print('Invalid choice. Please select a valid option.')
 
     return all_lists_with_items
 
