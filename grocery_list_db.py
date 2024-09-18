@@ -908,8 +908,6 @@ def compare_default_list_to_inventory(default_list_id):
         print(f"No items found on list searched.")
         return []
 
-    print(default_list_items)
-
     inventory_items = search_db('current', 'inventory', sort_by='name', sort_desc=False)
     inventory_dict = {item[1]: item for item in inventory_items}
 
@@ -932,7 +930,7 @@ def create_shopping_list():
     """
     check_current_db()
 
-    shopping_lists = search_db('current', 'default_lists', sort_by='name', sort_desc=False)
+    shopping_lists = search_db('current', 'default_lists')
     if not shopping_lists:
         print("No default shopping lists available.")
         return []
