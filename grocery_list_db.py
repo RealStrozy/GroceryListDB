@@ -138,8 +138,12 @@ def search_db(database, db_table, term=None, value=None, sort_by=None, sort_desc
     with sqlite3.connect(f'./.data/{database}.db') as db:
         cur = db.cursor()
         if term and value and sort_by:
-            query = f'SELECT * FROM {db_table} WHERE {term} = ? ORDER BY {sort_by} DESC'
-            cur.execute(query, (value,))
+            if sort_desc:
+                query = f'SELECT * FROM {db_table} WHERE {term} = ? ORDER BY {sort_by} DESC'
+                cur.execute(query, (value,))
+            else:
+                query = f'SELECT * FROM {db_table} WHERE {term} = ? ORDER BY {sort_by}'
+                cur.execute(query, (value,))
 
         elif term and value:
             query = f'SELECT * FROM {db_table} WHERE {term} = ?'
@@ -899,10 +903,12 @@ def compare_default_list_to_inventory(default_list_id):
     check_current_db()
 
     default_list_items = search_db('current', 'default_lists_items', 'default_lists_id',
-                                   default_list_id, sort_by='name')
+                                   default_list_id, sort_by='name', sort_desc=False)
     if not default_list_items:
         print(f"No items found on list searched.")
         return []
+
+    print(default_list_items)
 
     inventory_items = search_db('current', 'inventory', sort_by='name', sort_desc=False)
     inventory_dict = {item[1]: item for item in inventory_items}
