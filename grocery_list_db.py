@@ -898,7 +898,8 @@ def compare_default_list_to_inventory(default_list_id):
     """
     check_current_db()
 
-    default_list_items = search_db('current', 'default_lists_items', 'default_lists_id', default_list_id)
+    default_list_items = search_db('current', 'default_lists_items', 'default_lists_id',
+                                   default_list_id, sort_by='name')
     if not default_list_items:
         print(f"No items found on list searched.")
         return []
