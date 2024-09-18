@@ -155,7 +155,7 @@ def search_db(database, db_table, term=None, value=None, sort_by=None, sort_desc
                 cur.execute(query)
 
             else:
-                query = f'SELECT * FROM {db_table} ORDER BY {sort_by} DESC'
+                query = f'SELECT * FROM {db_table} ORDER BY {sort_by}'
                 cur.execute(query)
 
         else:
@@ -851,7 +851,8 @@ def inventory_report():
     """
     Generates and prints the inventory report.
     """
-    items = [(item[1], item[3]) for item in search_db('current', 'inventory', sort_by='qty')]
+    items = [(item[1], item[3]) for item in search_db('current', 'inventory',
+                                                      sort_by='name', sort_desc=False)]
     items_w_qty = [item for item in items if item[1] != 0]
 
     # Shows user the inventory
