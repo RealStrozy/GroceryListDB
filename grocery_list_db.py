@@ -1106,13 +1106,12 @@ def print_historical_list():
             cur.execute(query, (list_uuid,))
             items = cur.fetchall()
 
-        # Give user option to print
-        print('List from: ' + created_date)
-        action = input('Print no(1), yes(2), or exit(0): ')
-        if action == 'exit' or action == '0':
-            break
+        if uuid_to_search: # noqa Skips is a list was searched by UUID
+            # Give user option to print
+            print('List from: ' + created_date)
+            action = input('Print no(1), yes(2), or exit(0): ')
 
-        elif action == 'yes' or action == '2':
+        if action == 'yes' or action == '2' or uuid_to_search: # noqa
             # Print the historical list using the prepared format
             print_header()
             p.ln(2)
@@ -1125,6 +1124,9 @@ def print_historical_list():
             p.hw('INIT')
             print_list(items, list_uuid=list_uuid)
             p.cut()
+
+        elif action == 'exit' or action == '0':
+            break
 
         elif action == 'no' or action == '1':
             continue
