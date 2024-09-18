@@ -1146,7 +1146,7 @@ def print_all_default_lists():
             cur.execute('''
                 SELECT name, qty
                 FROM default_lists_items
-                WHERE default_lists_id = ?
+                WHERE default_lists_id = ? ORDER BY name
             ''', (list_id,))
             items = cur.fetchall()  # This will be a list of tuples (item_name, quantity)
 
