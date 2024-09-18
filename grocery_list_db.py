@@ -903,7 +903,7 @@ def compare_default_list_to_inventory(default_list_id):
         print(f"No items found on list searched.")
         return []
 
-    inventory_items = search_db('current', 'inventory')
+    inventory_items = search_db('current', 'inventory', sort_by='name', sort_desc=False)
     inventory_dict = {item[1]: item for item in inventory_items}
 
     items_to_add = []
@@ -925,7 +925,7 @@ def create_shopping_list():
     """
     check_current_db()
 
-    shopping_lists = search_db('current', 'default_lists')
+    shopping_lists = search_db('current', 'default_lists', sort_by='name', sort_desc=False)
     if not shopping_lists:
         print("No default shopping lists available.")
         return []
@@ -953,11 +953,7 @@ def create_shopping_list():
         if action == 'no':
             break
         elif action == 'yes':
-            item_info = get_item_info_by_upc()
-            if not item_info:
-                break
-
-            item_name, description, category, upc = item_info
+            item_name, description, category, upc = get_item_info_by_upc()
             try:
                 qty = int(input("Enter quantity: "))
             except ValueError:
@@ -968,7 +964,11 @@ def create_shopping_list():
 
     additional_items_to_add = []
     for item_name, qty in additional_items:
-        inventory_qty = search_db('current', 'inventory', 'name', item_name)[0][3]
+        inventory_qty = search_db('current', 'inventory', 'name', item_name)
+        if inventory_qty:
+            inventory_qty = inventory_qty[0][3]
+        else:
+            inventory_qty = 0
         if inventory_qty < qty:
             additional_items_to_add.append((item_name, qty - inventory_qty))
 
