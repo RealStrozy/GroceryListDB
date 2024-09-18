@@ -1050,6 +1050,7 @@ def print_historical_list():
     lists = [] # noqa
 
     # Determine if input is a UUID or a date
+    uuid_to_search = None
     if uuid_pattern.match(search_input):
         # Input is a UUID
         uuid_to_search = search_input
@@ -1106,10 +1107,14 @@ def print_historical_list():
             cur.execute(query, (list_uuid,))
             items = cur.fetchall()
 
-        if uuid_to_search: # noqa Skips is a list was searched by UUID
+        print(uuid_to_search)
+
+        if not uuid_to_search: # noqa Skips if a list was searched by UUID
             # Give user option to print
             print('List from: ' + created_date)
             action = input('Print no(1), yes(2), or exit(0): ')
+        else:
+            action = None
 
         if action == 'yes' or action == '2' or uuid_to_search: # noqa
             # Print the historical list using the prepared format
