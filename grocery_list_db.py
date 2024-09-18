@@ -1119,7 +1119,7 @@ def print_historical_list():
             p.set(double_height=True, double_width=True, align='center', invert=True)
             p.text(f'REPRINT\n{created_date}')
             p.ln(2)
-            p.set(invert=False)
+            p.set(double_height=True, double_width=True, align='center', invert=False)
             p.text('Shopping List')
             p.ln(2)
             p.hw('INIT')
