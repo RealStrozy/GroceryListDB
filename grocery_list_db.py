@@ -850,14 +850,42 @@ def inventory_report():
     items = [(item[1], item[3]) for item in search_db('current', 'inventory', sort_by='qty')]
     items_w_qty = [item for item in items if item[1] != 0]
 
-    print_header()
-    p.ln(2)
-    p.set(double_height=True, double_width=True, align='center')
-    p.text('Inventory Report')
-    p.ln(2)
-    p.hw('INIT')
-    print_list(items_w_qty, barcode=False)
-    p.cut()
+    # Shows user the inventory
+    print(BColors.HEADER + 'Inventory' + BColors.END_C)
+    for name, qty in items:
+        print(name + ', ' + str(qty))
+
+    # Asks user if they would like to print
+    print('\n1. Print')
+    print('2. Print items with positive quantity')
+    print('0. Exit')
+    choice = input('Enter your choice: ')
+
+    if choice == '0':
+        return
+
+    elif choice == '1':
+        print_header()
+        p.ln(2)
+        p.set(double_height=True, double_width=True, align='center')
+        p.text('Inventory Report')
+        p.ln(2)
+        p.hw('INIT')
+        print_list(items, barcode=False)
+        p.cut()
+
+    elif choice == '2':
+        print_header()
+        p.ln(2)
+        p.set(double_height=True, double_width=True, align='center')
+        p.text('Inventory Report')
+        p.ln(2)
+        p.hw('INIT')
+        print_list(items_w_qty, barcode=False)
+        p.cut()
+
+    else:
+        print('Invalid choice. Please select a valid option.')
 
 
 def compare_default_list_to_inventory(default_list_id):
