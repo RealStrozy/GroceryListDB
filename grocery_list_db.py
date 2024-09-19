@@ -8,6 +8,8 @@ from escpos import printer
 import re
 import os
 
+from sympy.codegen.ast import break_
+
 
 class BColors:
     HEADER = '\033[95m'
@@ -955,23 +957,26 @@ def create_shopping_list():
 
     additional_items = []
     while True:
+        print('here')
         action = input('Would you like to manually add more items? yes(1) no(0)'
                        ' or "hand" for handwritten items : ').strip().lower()
         if action == 'no' or action == '0':
             break
         elif action == 'yes' or action == '1':
-            item_name, description, category, upc = get_item_info_by_upc()
-            try:
-                qty = int(input("Enter quantity: "))
-                additional_items.append((item_name, qty))
-            except ValueError:
-                print("Invalid input.")
-                continue
+            item_info = get_item_info_by_upc()
+            if item_info:
+                item_name, description, category, upc = item_info
+                try:
+                    qty = int(input("Enter quantity: "))
+                    additional_items.append((item_name, qty))
+                except ValueError:
+                    print("Invalid input.")
+                    continue
         elif action == 'hand':
             while True:
                 item_name = input('Item name (0 to go back): ').strip()
                 if item_name == '0':
-                    break
+                    continue
                 try:
                     qty = int(input("Enter quantity: "))
                     additional_items.append((item_name, qty))
@@ -1120,6 +1125,37 @@ def print_historical_list():
             # Print the historical list using the prepared format
             print_header()
             p.ln(2)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             p.set(double_height=True, double_width=True, align='center', invert=True)
             p.text(f'REPRINT\n{created_date}')
             p.ln(2)
