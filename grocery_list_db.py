@@ -8,8 +8,6 @@ from escpos import printer
 import re
 import os
 
-from sympy.codegen.ast import break_
-
 
 class BColors:
     HEADER = '\033[95m'
