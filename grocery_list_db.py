@@ -51,7 +51,7 @@ def read_config(config_file='config.ini'):
             'chr_width': '48'
         }
         with open(config_file, 'w') as configfile:
-            config.write(configfile)
+            config.write(configfile) # noqa
         print(BColors.WARNING + "Please use the config.ini file to configure your printer." + BColors.END_C)
         time.sleep(10)
         exit(1)
@@ -957,9 +957,11 @@ def create_shopping_list():
     while True:
         print('here')
         action = input('Would you like to manually add more items? yes(1) no(0)'
-                       ' or "hand" for handwritten items : ').strip().lower()
+                       ' or "hand" for handwritten items. "c" to cancel : ').strip().lower()
         if action == 'no' or action == '0':
             break
+        elif action == 'c':
+            return []
         elif action == 'yes' or action == '1':
             item_info = get_item_info_by_upc()
             if item_info:
