@@ -974,7 +974,7 @@ def create_shopping_list():
             while True:
                 item_name = input('Item name (0 to go back): ').strip()
                 if item_name == '0':
-                    continue
+                    break
                 try:
                     qty = int(input("Enter quantity: "))
                     additional_items.append((item_name, qty))
