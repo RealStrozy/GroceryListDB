@@ -463,6 +463,7 @@ def edit_default_shopping_list():
                 print("Choose how you want to find the item to remove:")
                 print("1. Select from a list")
                 print("2. Enter a UPC")
+                print("0. Return")
 
                 try:
                     method_choice = int(input("Enter your choice (1 or 2): "))
@@ -492,7 +493,7 @@ def edit_default_shopping_list():
                         # Validate the selection
                         if 1 <= selection <= len(items):
                             item_id = items[selection - 1][0]  # Get the ID of the selected item
-                            item_name = items[selection - 1][1]  # Get the name of the selected item
+                            item_name = items[selection - 1][2]  # Get the name of the selected item
                         else:
                             print("Invalid selection. Please select a valid item number.")
                             return
@@ -503,13 +504,16 @@ def edit_default_shopping_list():
                         upc = input("Enter the UPC of the item to remove: ")
 
                         # Check if item is in inventory
-                        search = search_db('current', 'inventory', 'upc', upc)
+                        search = search_db('current', 'default_lists_items', 'upc', upc)
                         if not search:
                             print(f"Item with UPC {upc} not found in the inventory.")
                             return
 
                         item_id = search[0][0]  # Get the ID of the selected item
-                        item_name = search[0][1]  # Get the name of the selected item
+                        item_name = search[0][2]  # Get the name of the selected item
+
+                    elif method_choice == 0:
+                        return
 
                     else:
                         print("Invalid choice. Please select 1 or 2.")
