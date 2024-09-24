@@ -524,7 +524,7 @@ def edit_default_shopping_list():
                         f"Are you sure you want to permanently remove '{item_name}'? (yes/no): ").strip().lower()
                     if confirm == 'yes':
                         # Remove the item using add_remove_db
-                        add_remove_db('current', 'inventory', add=False, id=item_id)
+                        add_remove_db('current', 'default_lists_items', add=False, id=item_id)
                         print(f"Item '{item_name}' has been permanently removed.")
 
                     else:
