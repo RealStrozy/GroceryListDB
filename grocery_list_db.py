@@ -4,7 +4,7 @@ import uuid
 import sqlite3
 import requests
 from datetime import datetime, timezone
-from escpos import printer
+from escpos import printer, exceptions
 import re
 import os
 
@@ -835,9 +835,27 @@ def create_shopping_list():
     return combined_items_needed
 
 
-def use_printer():
-    pass
-
+def use_printer(func):
+    """
+    Decorator to start and stop the printer connection each time it is used
+    :param func: Function that requires a printer connection
+    :return: Return from func
+    """
+    def wrapper(*args, **kwargs):
+        try:
+            # Initialize the printer connection
+            global p
+            p = printer_connect(read_config())
+            # Run the wrapped function
+            result = func(*args, **kwargs)
+            # Cut and finalize printing after function execution
+            p.close()
+            return result
+        except exceptions.USBNotFoundError:
+            print(f"{BColors.WARNING}Printer not connected!{BColors.END_C}")
+        except Exception as e:
+            print(f"{BColors.FAIL} Error: {e}{BColors.END_C}")
+    return wrapper
 
 def print_pdf417(content, width=2, rows=0, height_multiplier=0, data_column_count=0, ec=20, options=0):
     """
@@ -1397,5 +1415,9 @@ def main_menu():
 if __name__ == "__main__":
     os.makedirs('./.data', exist_ok=True)
     printer_config = read_config()
-    p = printer_connect(printer_config)
+    # Tests printer connection
+    try:
+        p = printer_connect(printer_config)
+    except exceptions.USBNotFoundError:
+        print(f'{BColors.WARNING} Printer not connected!{BColors.END_C}')
     main_menu()
