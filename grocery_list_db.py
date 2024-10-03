@@ -728,232 +728,6 @@ def edit_inventory_item():
         print("Invalid input. Please enter a valid number.")
 
 
-
-def print_pdf417(content, width=2, rows=0, height_multiplier=0, data_column_count=0, ec=20, options=0):
-    """
-    Generate and send a PDF417 barcode command sequence to the printer.
-    Args:
-        content (str): Content to encode in the barcode.
-        width (int, optional): Module width. Defaults to 2.
-        rows (int, optional): Number of rows. Defaults to 0.
-        height_multiplier (int, optional): Height multiplier. Defaults to 0.
-        data_column_count (int, optional): Data column count. Defaults to 0.
-        ec (int, optional): Error correction level. Defaults to 20.
-        options (int, optional): Barcode options (0 = standard, 1 = truncated). Defaults to 0.
-    Returns:
-        str: Error message if any issue, else None.
-    """
-
-    def validate_parameters():
-        if len(content) + 3 >= 500:
-            return 'TOO LARGE'
-        if not 2 <= width <= 8:
-            return 'Width must be between 2 and 8'
-        if rows != 0 and not 3 <= rows <= 90:
-            return "Rows must be 0 (auto) or between 3 and 90"
-        if not 0 <= height_multiplier <= 16:
-            return 'Height multiplier must be between 0 and 16'
-        if not 0 <= data_column_count <= 30:
-            return 'Data column count must be between 0 and 30'
-        if not 1 <= ec <= 40:
-            return 'Error correction level must be between 1 and 40'
-        if options not in [0, 1]:
-            return 'Options must be 0 (standard) or 1 (truncated)'
-        return None
-
-    error = validate_parameters()
-    if error:
-        return error
-
-    content = content.encode('utf-8')
-
-    def prefix():
-        # Create a byte array for the prefix command sequence (includes pl and ph for one byte settings)
-        trunk = bytearray(b'\x1d\x28\x6b\x03\x00\x30')
-        return trunk
-
-    def prefix_short():
-        # Create a shorter byte array for prefix (without pl and ph)
-        trunk = bytearray(b'\x1d\x28\x6b')
-        return trunk
-
-    def calculate_pl_ph(measure):
-        # Calculate pl and ph based on the length of the content
-        total_length = len(measure) + 3  # Length includes 3 additional bytes
-        pl = total_length % 256  # Lower byte
-        ph = total_length // 256  # Higher byte
-        if not ph:
-            ph = 0
-        pl_ph = pl, ph
-        bytearray(pl_ph)
-        return pl_ph
-
-    # Start creating the command sequence
-    # Select alignment mode centered
-    data = bytearray(b'\x1b\x61\x01')
-    # Select model: standard or truncated
-    data.extend(prefix())
-    code_byte = 70
-    data.extend(code_byte.to_bytes())
-    data.extend(options.to_bytes())
-
-    # Column count
-    data.extend(prefix())
-    code_byte = 65
-    data.extend(code_byte.to_bytes())
-    data.extend(data_column_count.to_bytes())
-
-    # Rows count
-    data.extend(prefix())
-    code_byte = 66
-    data.extend(code_byte.to_bytes())
-    data.extend(rows.to_bytes())
-
-    # Set dot sizes
-    data.extend(prefix())
-    code_byte = 67
-    data.extend(code_byte.to_bytes())
-    data.extend(width.to_bytes())
-    data.extend(prefix())
-    code_byte = 68
-    data.extend(code_byte.to_bytes())
-    data.extend(height_multiplier.to_bytes())
-
-    # Set error correction ratio
-    data.extend(prefix_short())
-    data.extend(bytearray(b'\x04\x00\x30'))
-    code_byte = 69
-    data.extend(code_byte.to_bytes())
-    code_byte = 49
-    data.extend(code_byte.to_bytes())
-    data.extend(ec.to_bytes())
-
-    # Save is symbol storage area & print from symbol storage area
-    data.extend(prefix_short())
-    data.extend(calculate_pl_ph(content))  # Calculate and add pl and ph
-    data.extend(bytearray(b'\x30\x50\x30'))
-    data.extend(content)  # Add the barcode content
-    data.extend(prefix())
-    code_byte = 81
-    data.extend(code_byte.to_bytes())
-    data.extend(bytearray(b'\x30'))  # End of sequence generation
-
-    # Sends the sequence to the printer
-    p._raw(data)  # noqa
-
-def print_header():
-    """
-    Prints the header including the logo and current date/time.
-    """
-    p.hw('INIT')
-    p.image('./assets/logo.png', center=True)
-    p.hw('INIT')
-    p.ln(2)
-    now = datetime.now(timezone.utc).strftime('%m/%d/%Y %H:%M:%S %Z')
-    p.text(f'Printed at: {now}')
-
-
-def print_line():
-    """
-    Prints a horizontal line across the width of the printer.
-    """
-    line = '-' * int(printer_config['chr_width'])
-    p.text(line)
-
-
-def r_l_justify(str_a, str_b, space_chr=' '):
-    """
-    Prints two strings where one is justified to the left and one to the right.
-    Args:
-        str_a (str): Left-justified string.
-        str_b (str): Right-justified string.
-        space_chr (str, optional): Character to use for spacing. Defaults to 'space'.
-    """
-    if not space_chr or len(space_chr) != 1:
-        p.text('SPACE_CHR must be a single character')
-        return
-
-    both_length = len(str_a) + len(str_b)
-    if both_length > int(printer_config['chr_width']):
-        amt_to_trim = int(printer_config['chr_width']) - (len(str_b) + 5)
-        str_a = str_a[:amt_to_trim] + '...'
-        both_length = len(str_a) + len(str_b)
-
-    spaces = space_chr * (int(printer_config['chr_width']) - both_length)
-    final_str = f"{str_a}{spaces}{str_b}"
-    p.hw('INIT')
-    p.text(final_str)
-
-
-def print_list(items, list_uuid=None, barcode=True):
-    """
-    Prints a shopping list with the given data.
-    Args:
-        items (list): List of tuples (name, qty).
-        list_uuid (str, optional): UUID of the list. Generates if not provided.
-        barcode (bool, optional): Whether to print a barcode. Defaults to True.
-    Returns:
-        dict: Dictionary containing 'time_generated' and 'uuid'.
-    """
-    list_uuid = list_uuid or str(uuid.uuid4())
-    creation_time = int(time.time())
-
-    for item_name, qty in items:
-        r_l_justify(str(item_name), str(qty))
-    p.ln(1)
-
-    if barcode:
-        print_pdf417(list_uuid, width=3)
-
-    return {'time_generated': creation_time, 'uuid': list_uuid}, items
-
-
-def inventory_report():
-    """
-    Generates and prints the inventory report.
-    """
-    items = [(item[1], item[3]) for item in search_db('current', 'inventory',
-                                                      sort_by='name', sort_desc=False)]
-    items_w_qty = [item for item in items if item[1] != 0]
-
-    # Shows user the inventory
-    print(BColors.HEADER + 'Inventory' + BColors.END_C)
-    for name, qty in items:
-        print(name + ', ' + str(qty))
-
-    # Asks user if they would like to print
-    print('\n1. Print')
-    print('2. Print items with positive quantity')
-    print('0. Exit')
-    choice = input('Enter your choice: ')
-
-    if choice == '0':
-        return
-
-    elif choice == '1':
-        print_header()
-        p.ln(2)
-        p.set(double_height=True, double_width=True, align='center')
-        p.text('Inventory Report')
-        p.ln(2)
-        p.hw('INIT')
-        print_list(items, barcode=False)
-        p.cut()
-
-    elif choice == '2':
-        print_header()
-        p.ln(2)
-        p.set(double_height=True, double_width=True, align='center')
-        p.text('Inventory Report')
-        p.ln(2)
-        p.hw('INIT')
-        print_list(items_w_qty, barcode=False)
-        p.cut()
-
-    else:
-        print('Invalid choice. Please select a valid option.')
-
-
 def compare_default_list_to_inventory(default_list_id):
     """
     Compares the default shopping list to current inventory and determines which items need to be added.
@@ -1061,6 +835,243 @@ def create_shopping_list():
     return combined_items_needed
 
 
+def use_printer():
+    pass
+
+
+def print_pdf417(content, width=2, rows=0, height_multiplier=0, data_column_count=0, ec=20, options=0):
+    """
+    Generate and send a PDF417 barcode command sequence to the printer.
+    Args:
+        content (str): Content to encode in the barcode.
+        width (int, optional): Module width. Defaults to 2.
+        rows (int, optional): Number of rows. Defaults to 0.
+        height_multiplier (int, optional): Height multiplier. Defaults to 0.
+        data_column_count (int, optional): Data column count. Defaults to 0.
+        ec (int, optional): Error correction level. Defaults to 20.
+        options (int, optional): Barcode options (0 = standard, 1 = truncated). Defaults to 0.
+    Returns:
+        str: Error message if any issue, else None.
+    MUST BE RUN INSIDE A FUNCTION WRAPPED WITH USE_PRINTER
+    """
+
+    def validate_parameters():
+        if len(content) + 3 >= 500:
+            return 'TOO LARGE'
+        if not 2 <= width <= 8:
+            return 'Width must be between 2 and 8'
+        if rows != 0 and not 3 <= rows <= 90:
+            return "Rows must be 0 (auto) or between 3 and 90"
+        if not 0 <= height_multiplier <= 16:
+            return 'Height multiplier must be between 0 and 16'
+        if not 0 <= data_column_count <= 30:
+            return 'Data column count must be between 0 and 30'
+        if not 1 <= ec <= 40:
+            return 'Error correction level must be between 1 and 40'
+        if options not in [0, 1]:
+            return 'Options must be 0 (standard) or 1 (truncated)'
+        return None
+
+    error = validate_parameters()
+    if error:
+        return error
+
+    content = content.encode('utf-8')
+
+    def prefix():
+        # Create a byte array for the prefix command sequence (includes pl and ph for one byte settings)
+        trunk = bytearray(b'\x1d\x28\x6b\x03\x00\x30')
+        return trunk
+
+    def prefix_short():
+        # Create a shorter byte array for prefix (without pl and ph)
+        trunk = bytearray(b'\x1d\x28\x6b')
+        return trunk
+
+    def calculate_pl_ph(measure):
+        # Calculate pl and ph based on the length of the content
+        total_length = len(measure) + 3  # Length includes 3 additional bytes
+        pl = total_length % 256  # Lower byte
+        ph = total_length // 256  # Higher byte
+        if not ph:
+            ph = 0
+        pl_ph = pl, ph
+        bytearray(pl_ph)
+        return pl_ph
+
+    # Start creating the command sequence
+    # Select alignment mode centered
+    data = bytearray(b'\x1b\x61\x01')
+    # Select model: standard or truncated
+    data.extend(prefix())
+    code_byte = 70
+    data.extend(code_byte.to_bytes())
+    data.extend(options.to_bytes())
+
+    # Column count
+    data.extend(prefix())
+    code_byte = 65
+    data.extend(code_byte.to_bytes())
+    data.extend(data_column_count.to_bytes())
+
+    # Rows count
+    data.extend(prefix())
+    code_byte = 66
+    data.extend(code_byte.to_bytes())
+    data.extend(rows.to_bytes())
+
+    # Set dot sizes
+    data.extend(prefix())
+    code_byte = 67
+    data.extend(code_byte.to_bytes())
+    data.extend(width.to_bytes())
+    data.extend(prefix())
+    code_byte = 68
+    data.extend(code_byte.to_bytes())
+    data.extend(height_multiplier.to_bytes())
+
+    # Set error correction ratio
+    data.extend(prefix_short())
+    data.extend(bytearray(b'\x04\x00\x30'))
+    code_byte = 69
+    data.extend(code_byte.to_bytes())
+    code_byte = 49
+    data.extend(code_byte.to_bytes())
+    data.extend(ec.to_bytes())
+
+    # Save is symbol storage area & print from symbol storage area
+    data.extend(prefix_short())
+    data.extend(calculate_pl_ph(content))  # Calculate and add pl and ph
+    data.extend(bytearray(b'\x30\x50\x30'))
+    data.extend(content)  # Add the barcode content
+    data.extend(prefix())
+    code_byte = 81
+    data.extend(code_byte.to_bytes())
+    data.extend(bytearray(b'\x30'))  # End of sequence generation
+
+    # Sends the sequence to the printer
+    p._raw(data)  # noqa
+
+
+def print_header():
+    """
+    Prints the header including the logo and current date/time.
+    MUST BE RUN INSIDE A FUNCTION WRAPPED WITH USE_PRINTER
+    """
+    p.hw('INIT')
+    p.image('./assets/logo.png', center=True)
+    p.hw('INIT')
+    p.ln(2)
+    now = datetime.now(timezone.utc).strftime('%m/%d/%Y %H:%M:%S %Z')
+    p.text(f'Printed at: {now}')
+
+
+def print_line():
+    """
+    Prints a horizontal line across the width of the printer.
+    MUST BE RUN INSIDE A FUNCTION WRAPPED WITH USE_PRINTER
+    """
+    line = '-' * int(printer_config['chr_width'])
+    p.text(line)
+
+
+def r_l_justify(str_a, str_b, space_chr=' '):
+    """
+    Prints two strings where one is justified to the left and one to the right.
+    Args:
+        str_a (str): Left-justified string.
+        str_b (str): Right-justified string.
+        space_chr (str, optional): Character to use for spacing. Defaults to 'space'.
+    MUST BE RUN INSIDE A FUNCTION WRAPPED WITH USE_PRINTER
+    """
+    if not space_chr or len(space_chr) != 1:
+        p.text('SPACE_CHR must be a single character')
+        return
+
+    both_length = len(str_a) + len(str_b)
+    if both_length > int(printer_config['chr_width']):
+        amt_to_trim = int(printer_config['chr_width']) - (len(str_b) + 5)
+        str_a = str_a[:amt_to_trim] + '...'
+        both_length = len(str_a) + len(str_b)
+
+    spaces = space_chr * (int(printer_config['chr_width']) - both_length)
+    final_str = f"{str_a}{spaces}{str_b}"
+    p.hw('INIT')
+    p.text(final_str)
+
+
+def print_list(items, list_uuid=None, barcode=True):
+    """
+    Prints a shopping list with the given data.
+    Args:
+        items (list): List of tuples (name, qty).
+        list_uuid (str, optional): UUID of the list. Generates if not provided.
+        barcode (bool, optional): Whether to print a barcode. Defaults to True.
+    Returns:
+        dict: Dictionary containing 'time_generated' and 'uuid'.
+    MUST BE RUN INSIDE A FUNCTION WRAPPED WITH USE_PRINTER
+    """
+    list_uuid = list_uuid or str(uuid.uuid4())
+    creation_time = int(time.time())
+
+    for item_name, qty in items:
+        r_l_justify(str(item_name), str(qty))
+    p.ln(1)
+
+    if barcode:
+        print_pdf417(list_uuid, width=3)
+
+    return {'time_generated': creation_time, 'uuid': list_uuid}, items
+
+
+@use_printer
+def inventory_report():
+    """
+    Generates and prints the inventory report.
+    """
+    items = [(item[1], item[3]) for item in search_db('current', 'inventory',
+                                                      sort_by='name', sort_desc=False)]
+    items_w_qty = [item for item in items if item[1] != 0]
+
+    # Shows user the inventory
+    print(BColors.HEADER + 'Inventory' + BColors.END_C)
+    for name, qty in items:
+        print(name + ', ' + str(qty))
+
+    # Asks user if they would like to print
+    print('\n1. Print')
+    print('2. Print items with positive quantity')
+    print('0. Exit')
+    choice = input('Enter your choice: ')
+
+    if choice == '0':
+        return
+
+    elif choice == '1':
+        print_header()
+        p.ln(2)
+        p.set(double_height=True, double_width=True, align='center')
+        p.text('Inventory Report')
+        p.ln(2)
+        p.hw('INIT')
+        print_list(items, barcode=False)
+        p.cut()
+
+    elif choice == '2':
+        print_header()
+        p.ln(2)
+        p.set(double_height=True, double_width=True, align='center')
+        p.text('Inventory Report')
+        p.ln(2)
+        p.hw('INIT')
+        print_list(items_w_qty, barcode=False)
+        p.cut()
+
+    else:
+        print('Invalid choice. Please select a valid option.')
+
+
+@use_printer
 def print_shopping_list(items):
     """
     Prints a shopping list and records it in the history database.
@@ -1099,7 +1110,7 @@ def print_shopping_list(items):
             print(f"Error adding item '{item_name}' to history database: {e}")
 
 
-
+@use_printer
 def print_historical_list():
     """
     Prints historical shopping lists based on a date or UUID provided by the user.
@@ -1186,37 +1197,6 @@ def print_historical_list():
             # Print the historical list using the prepared format
             print_header()
             p.ln(2)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             p.set(double_height=True, double_width=True, align='center', invert=True)
             p.text(f'REPRINT\n{created_date}')
             p.ln(2)
@@ -1238,6 +1218,7 @@ def print_historical_list():
 
 
 
+@use_printer
 def print_all_default_lists():
     """
     Retrieves all default shopping lists with their items and quantities and prints it.
