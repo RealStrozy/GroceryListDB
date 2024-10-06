@@ -635,6 +635,83 @@ def remove_item_permanently():
         print("Invalid input. Please enter a number.")
 
 
+def manual_qty_adjust():
+    """
+    Allows the user to change qty of an item from the inventory.
+    The user can select an item from a list or input a UPC directly.
+    """
+    # Ensure the current database and tables exist
+    check_current_db()
+
+    # Ask the user how they want to find the item
+    print("Choose how you want to find the item to change:")
+    print("1. Select from a list")
+    print("2. Enter a UPC")
+
+    try:
+        method_choice = int(input("Enter your choice (1 or 2): "))
+
+        # Option 1: Select from a list
+        if method_choice == 1:
+            # Fetch all items in the inventory
+            items = search_db('current', 'inventory')
+
+            if not items:
+                print("The inventory is empty.")
+                return
+
+            # Display all items by name
+            print("Select an item to change:")
+            for idx, item in enumerate(items, start=1):
+                print(f"{idx}. {item[1]} ({item[2]})")  # Display the item name
+
+            # Prompt the user to select an item to remove
+            selection = int(input("Enter the number of the item to change (0 to cancel): "))
+
+            if selection == 0:
+                print("Operation canceled.")
+                return
+
+            # Validate the selection
+            if 1 <= selection <= len(items):
+                item_id = items[selection - 1][0]  # Get the ID of the selected item
+                item_name = items[selection - 1][1]  # Get the name of the selected item
+                current_qty = items[selection - 1][3] # Get the qty of the selected item
+            else:
+                print("Invalid selection. Please select a valid item number.")
+                return
+
+        # Option 2: Enter a UPC
+        elif method_choice == 2:
+            # Prompt the user to enter the UPC
+            upc = input("Enter the UPC of the item to change: ")
+
+            # Check if item is in inventory
+            search = search_db('current', 'inventory', 'upc', upc)
+            if not search:
+                print(f"Item with UPC {upc} not found in the inventory.")
+                return
+
+            item_id = search[0][0]  # Get the ID of the selected item
+            item_name = search[0][1]  # Get the name of the selected item
+            current_qty = search[0][3] # Get the qty of the selected item
+
+        else:
+            print("Invalid choice. Please select 1 or 2.")
+            return
+
+        # Get and change qty
+        qty = int(input(f"Quantity of '{item_name}' should be ('quit' to cancel): "))
+        if qty.is_integer():
+            # Remove the item using add_remove_db
+            mod_qty_db('current', 'inventory', item_id, mod=(qty - current_qty))
+            print(f"Item '{item_name}' has been changed to {qty}.")
+        else:
+            print("Operation canceled.")
+
+    except ValueError:
+        print("Invalid input. Please enter a number.")
+
 
 def edit_inventory_item():
     """
@@ -856,6 +933,7 @@ def use_printer(func):
         except Exception as e:
             print(f"{BColors.FAIL} Error: {e}{BColors.END_C}")
     return wrapper
+
 
 def print_pdf417(content, width=2, rows=0, height_multiplier=0, data_column_count=0, ec=20, options=0):
     """
@@ -1357,22 +1435,26 @@ def default_shopping_list_menu():
 
 
 def admin_menu():
-    print(f"{BColors.HEADER}Administrator Options{BColors.END_C}")
-    print('1. Edit items')
-    print('"del". Remove items from inventory database table')
-    print('0. Main menu')
+    while True:
+        print(f"{BColors.HEADER}Administrator Options{BColors.END_C}")
+        print('1. Edit items')
+        print('2. Manually override quantity')
+        print('"del". Remove items from inventory database table')
+        print('0. Main menu')
 
-    choice = input('Enter your choice: ')
+        choice = input('Enter your choice: ')
 
-    if choice == '0':
-        quit(0)
-    elif choice == '1':
-        edit_inventory_item()
-    elif choice == 'del':
-        remove_item_permanently()
+        if choice == '0':
+            return
+        elif choice == '1':
+            edit_inventory_item()
+        elif choice == '2':
+            manual_qty_adjust()
+        elif choice == 'del':
+            remove_item_permanently()
 
-    else:
-        print('Invalid choice. Please select a valid option.')
+        else:
+            print('Invalid choice. Please select a valid option.')
 
 
 def main_menu():
